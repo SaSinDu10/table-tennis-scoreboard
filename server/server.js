@@ -8,6 +8,7 @@ require('dotenv').config();
 const playerRoutes = require('./routes/players');
 const matchRoutes = require('./routes/matches');
 const statsRoutes = require('./routes/stats');
+const teamRoutes = require('./routes/teams');
 // Import other routes... (matches, etc.)
 
 const app = express();
@@ -23,6 +24,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/players', playerRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/teams', teamRoutes);
 
 app.use('/api/matches', require('./routes/matches'));
 
