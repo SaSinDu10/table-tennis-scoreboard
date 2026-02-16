@@ -2,7 +2,15 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-// Sub-schema for Set Details
+// --- Sub-schema for Point History (for Undo) ---
+const pointHistorySchema = new Schema({
+    timestamp: { type: Date, default: Date.now },
+    scoringTeam: { type: Number, required: true, enum: [1, 2] },
+    scoreStateBefore: {
+    }
+}, { _id: false });
+
+// --- Sub-schema for 'Set Match' Details ---
 const setDetailSchema = new Schema({
     setIndex: { type: Number, required: true },
     team1Pair: [{ type: Schema.Types.ObjectId, ref: 'Player' }],
@@ -12,35 +20,21 @@ const setDetailSchema = new Schema({
     status: { type: String, enum: ['Pending', 'Live', 'Finished'], default: 'Pending' }
 }, { _id: false });
 
-// Sub-schema for Point History
-const pointHistorySchema = new Schema({
-    timestamp: { type: Date, default: Date.now },
-    scoringTeam: { type: Number, required: true, enum: [1, 2] },
-    scoreStateBefore: {
-        sets: { type: [[Number]], default: [] },
-        // Now that setDetailSchema is defined above, this reference is valid
-        setDetails: [setDetailSchema],
-        currentGame: {
-            team1: { type: Number, required: true },
-            team2: { type: Number, required: true }
-        },
-        currentSetScore: {
-            team1: { type: Number, required: true },
-            team2: { type: Number, required: true }
-        },
-        server: { type: Number, required: true, enum: [1, 2] }
-    }
+// --- NEW: Sub-schema for 'Relay Match' Legs ---
+const relayLegSchema = new Schema({
+    legNumber: { type: Number, required: true },
+    team1Players: [{ type: Schema.Types.ObjectId, ref: 'Player' }],
+    team2Players: [{ type: Schema.Types.ObjectId, ref: 'Player' }],
+    endScoreTeam1: { type: Number },
+    endScoreTeam2: { type: Number },
+    status: { type: String, enum: ['Pending', 'Live', 'Finished'], default: 'Pending' }
 }, { _id: false });
 
-// Main Match Schema
+// --- Main Match Schema ---
 const matchSchema = new Schema({
-    category: {
-        type: String,
-        enum: ['Super Senior', 'Senior', 'Junior']
-    },
     matchType: {
         type: String,
-        enum: ['Individual', 'Dual', 'TeamSet'],
+        enum: ['Individual', 'Dual', 'Team'],
         required: true
     },
     teamMatchSubType: {
@@ -49,38 +43,59 @@ const matchSchema = new Schema({
     },
     teamMatchEncounterFormat: {
         type: String,
-        enum: ['Singles', 'Doubles'],
+        enum: ['Individual', 'Dual'],
+    },
+    
+    setPointTarget: { // Only for Relay Matches
+        type: Number
     },
 
-    // Fields for Individual/Dual Matches
+    category: { 
+        type: String, 
+        enum: ['Super Senior', 'Senior', 'Junior'] 
+    },
+
+    // --- Fields for Individual/Dual Matches ---
     player1: { type: Schema.Types.ObjectId, ref: 'Player' },
     player2: { type: Schema.Types.ObjectId, ref: 'Player' },
     player3: { type: Schema.Types.ObjectId, ref: 'Player' },
     player4: { type: Schema.Types.ObjectId, ref: 'Player' },
     setsToWin: { type: Number },
 
-    // Fields for TeamSet Matches
+    // --- Fields for Team Matches ---
     team1: { type: Schema.Types.ObjectId, ref: 'Team' },
     team2: { type: Schema.Types.ObjectId, ref: 'Team' },
     numberOfSets: { type: Number },
-    maxSetsPerPlayer: {
-        type: Number,
-        default: 2
-    },
+    maxSetsPerPlayer: { type: Number, default: 2 },
 
-    // --- Score Object ---
     score: {
+        // For Ind/Dual
         sets: { type: [[Number]], default: [] },
+
+        // For 'Set' sub-type Team Matches
         setDetails: [setDetailSchema],
+
+        // For 'Relay' sub-type Team Matches
+        relayLegs: [relayLegSchema],
+        overallScore: {
+            team1: { type: Number, default: 0 },
+            team2: { type: Number, default: 0 }
+        },
+
+        // Score within the *current live game*
         currentGame: { team1: { type: Number, default: 0 }, team2: { type: Number, default: 0 } },
+
+        // For Team 'Set' Matches
         currentSetScore: { team1: { type: Number, default: 0 }, team2: { type: Number, default: 0 } },
+
+        // Server for the current live game
         server: { type: Number, enum: [1, 2], default: 1 }
     },
 
-    pointHistory: { type: [pointHistorySchema], default: [] },
+    pointHistory: [pointHistorySchema],
     status: {
         type: String,
-        enum: ['Upcoming', 'Live', 'Finished', 'Cancelled', 'AwaitingSetPairs', 'AwaitingTiebreakerPairs'],
+        enum: ['Upcoming', 'Live', 'Finished', 'Cancelled', 'AwaitingSubMatchSetup', 'AwaitingTiebreakerPairs'],
         default: 'Upcoming'
     },
     winner: { type: Schema.Types.Mixed },
@@ -88,42 +103,29 @@ const matchSchema = new Schema({
     endTime: { type: Date }
 }, { timestamps: true });
 
-// Pre-save Hook for Validation and Field Cleanup
-matchSchema.pre('save', function (next) {
-    if (this.matchType === 'TeamSet') {
+// --- Pre-save hook needs to be updated for 'Team' type ---
+matchSchema.pre('save', function(next) {
+    if (this.matchType === 'Team') {
         if (!this.team1 || !this.team2 || !this.teamMatchSubType || !this.teamMatchEncounterFormat) {
-            return next(new Error('For TeamSet: Team IDs, sub-type, and encounter format are required.'));
+            return next(new Error('Teams, sub-type, and encounter format are required for Team matches.'));
         }
         if (this.teamMatchSubType === 'Set' && (!this.numberOfSets || this.numberOfSets < 1)) {
-            return next(new Error('For TeamSet (Set type): Number of sets is required.'));
+            return next(new Error('Number of sets is required for "Set" type team matches.'));
         }
-        if (typeof this.maxSetsPerPlayer !== 'number' || this.maxSetsPerPlayer < 1) {
-            this.maxSetsPerPlayer = 2;
+        if (this.teamMatchSubType === 'Relay' && (!this.numberOfSets || this.numberOfSets < 1 || !this.setPointTarget || this.setPointTarget < 1)) {
+            return next(new Error('Number of sets/legs and points per set/leg are required for "Relay" type team matches.'));
         }
-
-        this.player1 = undefined; this.player2 = undefined; this.player3 = undefined; this.player4 = undefined;
-        this.setsToWin = undefined;
-        this.category = undefined; // Category is not for TeamSet matches
-    } else if (this.matchType === 'Individual' || this.matchType === 'Dual') {
-        if (!this.category) { // Category IS required for Ind/Dual
-            return next(new Error('Category is required for Individual/Dual matches.'));
+        // Clear incompatible fields
+        this.player1 = this.player2 = this.player3 = this.player4 = this.setsToWin = undefined;
+    } else { // Individual/Dual
+        if (!this.player1 || !this.player2 || !this.category) {
+            return next(new Error('Category and players are required for Individual/Dual matches.'));
         }
-        if (!this.player1 || !this.player2) {
-            return next(new Error('Player 1 and Player 2 are required for Individual/Dual matches.'));
-        }
-        if (this.matchType === 'Dual' && (!this.player3 || !this.player4)) {
-            return next(new Error('Player 3 and Player 4 are required for Dual matches.'));
-        }
-        if (typeof this.setsToWin !== 'number' || ![1, 2, 3].includes(this.setsToWin)) {
-            this.setsToWin = 3;
-        }
-
-        this.team1 = undefined; this.team2 = undefined;
-        this.teamMatchSubType = undefined; this.teamMatchEncounterFormat = undefined;
-        this.numberOfSets = undefined;
-        this.score.setDetails = [];
-    } else {
-        return next(new Error(`Unknown matchType: ${this.matchType}`));
+        // Clear incompatible fields
+        this.team1 = this.team2 = this.teamMatchSubType = this.teamMatchEncounterFormat = this.numberOfSets = this.setPointTarget = undefined;
+        this.score.relayLegs = undefined;
+        this.score.overallScore = undefined;
+        this.score.setDetails = undefined;
     }
     next();
 });

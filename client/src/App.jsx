@@ -5,9 +5,9 @@ import { Routes, Route, useNavigate, useLocation, useMatch } from 'react-router-
 import PlayerForm from './components/PlayerForm';
 import PlayerList from './components/PlayerList';
 import MatchSetupForm from './components/MatchSetupForm';
-//import TeamMatchSetup from './components/TeamSetMatchSetup';
 import TeamMatchesLanding from './components/TeamMatchesLanding';
 import TeamSetMatchSetup from './components/TeamSetMatchSetup';
+import TeamRelayMatchSetup from './components/TeamRelayMatchSetup';
 import TeamForm from './components/TeamForm';
 import TeamList from './components/TeamList';
 import MatchList from './components/MatchList';
@@ -40,7 +40,7 @@ function App() {
     const isScoreboardRoute = useMatch("/match/:id/score");
     const onStandardScoreboard = useMatch("/match/:id/score");
     const onTeamScoreboard = useMatch("/team-match/:id/score");
-    const hideSider = onStandardScoreboard || onTeamScoreboard; // Hide if either matches
+    const hideSider = onStandardScoreboard || onTeamScoreboard;
 
     // Function to fetch players - memoized with useCallback
     const fetchPlayers = useCallback(async () => {
@@ -121,13 +121,13 @@ function App() {
     // Determine selected menu key based on route
     const getSelectedKey = () => {
         const path = location.pathname;
-        if (hideSider) return null; // No selection on scoreboards
-        if (path === '/team-matches') return '4'; // Key for Team Matches
-        if (path === '/rankings') return '5'; // Key for Rankings
+        if (hideSider) return null;
+        if (path === '/team-matches') return '4';
+        if (path === '/rankings') return '5';
         if (path === '/teams') return '2';
-        if (path === '/setup-match') return '3'; // Key for Ind/Dual Setup
-        if (path === '/') return '1'; // Key for Players
-        return '1'; // Default
+        if (path === '/setup-match') return '3';
+        if (path === '/') return '1';
+        return '1';
     };
     const menuItems = [
         { key: '1', label: 'Players', icon: <UserOutlined /> },
@@ -139,7 +139,6 @@ function App() {
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            {/* Conditionally Render Sider (Hide on Scoreboard route) */}
             {!isScoreboardRoute && (
                 <Sider breakpoint="lg" collapsedWidth="0">
                     <div style={{ height: '32px', margin: '16px', background: 'rgba(255, 255, 255, 0.2)', textAlign: 'center', color: 'white', lineHeight: '32px', borderRadius: '4px' }}> Menu </div>
@@ -171,9 +170,7 @@ function App() {
                     background: '#fff',
                     minHeight: 280,
                 }}>
-                    {/* --- Routing Setup --- */}
                     <Routes>
-                        {/* Player Management Route */}
                         <Route
                             path="/"
                             element={
@@ -205,45 +202,36 @@ function App() {
                             element={
                                 <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
                                     <MatchSetupForm onMatchCreated={handleMatchCreated} />
-                                    {/* Render MATCH lists, passing key for refresh */}
-                                    {/* The key prop forces remount when matchListVersion changes */}
                                     <MatchList key={`upcoming-${matchListVersion}`} status="Upcoming" title="Upcoming Matches" />
                                     <MatchList key={`live-${matchListVersion}`} status="Live" title="Live Matches" />
                                     <MatchList key={`finished-${matchListVersion}`} status="Finished" title="Finished Matches" />
                                 </Space>
                             }
                         />
-                        {/* --- NEW Team Match Setup & Lists Route --- */}
-                        {/* --- Team Matches Routes --- */}
-                    <Route
-                        path="/team-matches" // Landing page for team matches
-                        element={ <TeamMatchesLanding /> }
-                    />
-                    <Route
-                        path="/team-matches/setup-set" // Page to setup a "Set" type team match
-                        element={
-                            <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                <TeamSetMatchSetup onTeamMatchCreated={handleTeamMatchCreated} />
-                                {/* Lists for TeamSet matches - these might be better on the landing page or a dedicated list page */}
-                                <MatchList key={`upcoming-teamset-${matchListVersion}`} status="Upcoming" title="Upcoming Team Set Matches" matchTypeFilter="TeamSet" />
-                                {/* Add Live and Finished lists if needed here */}
-                            </Space>
-                        }
-                    />
-                    <Route
-                        path="/team-matches/setup-relay" // Placeholder for future
-                        element={<div>Relay Match Setup (Coming Soon)</div>}
-                    />
+                        <Route
+                            path="/team-matches" // Landing page for team matches
+                            element={<TeamMatchesLanding />}
+                        />
+                        <Route
+                            path="/team-matches/setup-set" // Page to setup a "Set" type team match
+                            element={
+                                <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
+                                    <TeamSetMatchSetup onTeamMatchCreated={handleTeamMatchCreated} />
+                                    <MatchList key={`upcoming-teamset-${matchListVersion}`} status="Upcoming" title="Upcoming Team Set Matches" matchTypeFilter="TeamSet" />
+                                </Space>
+                            }
+                        />
+                        <Route
+                            path="/team-matches/setup-relay"
+                            element={<TeamRelayMatchSetup onTeamMatchCreated={handleMatchCreated} />} // Use the imported component
+                        />
                         {/* Scoreboard Route */}
                         <Route path="/match/:id/score" element={<Scoreboard />} />
                         {/* --- NEW Team Scoreboard Route --- */}
                         <Route path="/team-match/:id/score" element={<TeamScoreboard />} />
                         {/* Player Rankings Route */}
                         <Route path="/rankings" element={<PlayerRankings />} />
-                        {/* Optional: Catch-all 404 Route */}
-                        {/* <Route path="*" element={<div>404 Page Not Found</div>} /> */}
                     </Routes>
-                    {/* ------------------- */}
                 </Content>
 
                 <Footer style={{ textAlign: 'center', background: '#f0f2f5', padding: '15px 50px' }}>

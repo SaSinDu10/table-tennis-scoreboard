@@ -44,7 +44,7 @@ const TeamSetMatchSetup = ({ onTeamMatchCreated }) => {
         }
 
         const payload = {
-            matchType: 'TeamSet',
+            matchType: 'Team',
             teamMatchSubType: 'Set',
             teamMatchEncounterFormat: values.encounterFormat,
             team1Id: values.team1Id,
@@ -53,33 +53,28 @@ const TeamSetMatchSetup = ({ onTeamMatchCreated }) => {
             maxSetsPerPlayer: values.maxSetsPerPlayer
         };
 
+        console.log("Submitting Team SET Match payload:", payload);
+
         try {
             const response = await axios.post(`${API_URL}/api/matches`, payload);
-            message.success(`Team Match created! ID: ${response.data._id}`);
+            message.success(`Team Set Match created successfully!`);
             form.resetFields();
-            if (onTeamMatchCreated) {
-                onTeamMatchCreated(response.data);
-            }
+            if (onTeamMatchCreated) { onTeamMatchCreated(response.data); }
             navigate(`/team-match/${response.data._id}/score`);
         } catch (error) {
-            console.error("Error creating team match:", error.response?.data || error.message);
-            message.error(error.response?.data?.message || 'Failed to create team match.');
+            console.error("Error creating team set match:", error.response?.data || error.message);
+            message.error(error.response?.data?.message || 'Failed to create team set match.');
         } finally {
             setSubmitting(false);
         }
     };
 
     const getAvailableTeams = (excludeId) => {
-        if (!allTeams || allTeams.length === 0) return [];
         return allTeams.filter(t => t._id !== excludeId);
     };
 
     if (loadingTeams && allTeams.length === 0) {
-        return (
-            <Card title={<Title level={4}>Setup New Team Match</Title>}>
-                <div style={{ textAlign: 'center', padding: 20 }}><Spin tip="Loading Teams..." /></div>
-            </Card>
-        );
+        return <Card title={<Title level={4}>Setup New Team Set Match</Title>}><Spin /></Card>;
     }
 
     return (
@@ -88,7 +83,7 @@ const TeamSetMatchSetup = ({ onTeamMatchCreated }) => {
                 form={form}
                 layout="vertical"
                 onFinish={handleFinish}
-                initialValues={{ numberOfSets: 7, encounterFormat: 'Doubles', maxSetsPerPlayer: 2 }}
+                initialValues={{ numberOfSets: 7, encounterFormat: 'Dual', maxSetsPerPlayer: 2 }}
             >
 
                 <Form.Item
@@ -151,8 +146,8 @@ const TeamSetMatchSetup = ({ onTeamMatchCreated }) => {
                     rules={[{ required: true, message: 'Please select the encounter format!' }]}
                 >
                     <Radio.Group>
-                        <Radio value="Singles">1 vs 1 (Singles)</Radio>
-                        <Radio value="Doubles">2 vs 2 (Doubles)</Radio>
+                        <Radio value="Individual">1 vs 1 (Singles)</Radio>
+                        <Radio value="Dual">2 vs 2 (Doubles)</Radio>
                     </Radio.Group>
                 </Form.Item>
 
@@ -172,8 +167,6 @@ const TeamSetMatchSetup = ({ onTeamMatchCreated }) => {
                 >
                     <InputNumber min={1} max={9} style={{ width: '100px' }} />
                 </Form.Item>
-                
-                
 
                 <Form.Item style={{ marginTop: 24 }}>
                     <Button type="primary" htmlType="submit" loading={submitting} block>
