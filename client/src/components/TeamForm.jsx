@@ -1,24 +1,28 @@
 // src/components/TeamForm.jsx
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Select, Button, message, Card, Typography, Spin } from 'antd';
+// --- FIX: Add 'Upload' to this import line ---
+import { Form, Input, Select, Button, message, Card, Typography, Spin, Upload } from 'antd';
+// --- And 'UploadOutlined' from icons ---
+import { UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Option } = Select;
 const { Title } = Typography;
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const EXPECTED_TEAM_SIZE = 6; // Define expected team size, adjust if needed
+const EXPECTED_TEAM_SIZE = 6;
 
 const TeamForm = ({ onTeamCreated }) => {
     const [form] = Form.useForm();
-    const [allPlayers, setAllPlayers] = useState([]); // To populate player select dropdown
+    const [allPlayers, setAllPlayers] = useState([]);
     const [loadingPlayers, setLoadingPlayers] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [logoFileList, setLogoFileList] = useState([]); // State to hold logo file
 
-    // Fetch all players to select from
+    // Fetch all players for selection
     useEffect(() => {
+        setLoadingPlayers(true);
         const fetchPlayers = async () => {
-            setLoadingPlayers(true);
             try {
                 const response = await axios.get(`${API_URL}/api/players`);
                 setAllPlayers(response.data || []);
@@ -36,24 +40,33 @@ const TeamForm = ({ onTeamCreated }) => {
         setSubmitting(true);
         console.log("Submitting team data:", values);
 
-        // Validate player selection count (client-side, backend also validates)
         if (!values.playerIds || values.playerIds.length !== EXPECTED_TEAM_SIZE) {
-            message.error(`Please select exactly ${EXPECTED_TEAM_SIZE} players for the team.`);
+            message.error(`Please select exactly ${EXPECTED_TEAM_SIZE} players.`);
             setSubmitting(false);
             return;
         }
 
-        const payload = {
-            name: values.name,
-            playerIds: values.playerIds
-        };
+        // Use FormData to send both files and text fields
+        const formData = new FormData();
+        formData.append('name', values.name);
+        (values.playerIds || []).forEach(playerId => {
+            formData.append('playerIds', playerId);
+        });
+
+        // Append the logo file if one was selected
+        if (logoFileList.length > 0 && logoFileList[0].originFileObj) {
+            formData.append('teamLogo', logoFileList[0].originFileObj);
+        }
 
         try {
-            const response = await axios.post(`${API_URL}/api/teams`, payload);
+            const response = await axios.post(`${API_URL}/api/teams`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             message.success(`Team '${response.data.name}' created successfully!`);
-            form.resetFields(); // Clear the form
+            form.resetFields();
+            setLogoFileList([]); // Clear logo file state
             if (onTeamCreated) {
-                onTeamCreated(response.data); // Callback to parent (e.g., App.jsx to refresh list)
+                onTeamCreated(response.data);
             }
         } catch (error) {
             console.error("Error creating team:", error.response?.data || error.message);
@@ -63,19 +76,51 @@ const TeamForm = ({ onTeamCreated }) => {
         }
     };
 
+    // Handlers for logo upload component
+    const handleLogoUploadChange = ({ fileList: newFileList }) => {
+        setLogoFileList(newFileList.slice(-1)); // Keep only the last file
+    };
+
+    const beforeLogoUpload = (file) => {
+        const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/gif';
+        if (!isJpgOrPng) { message.error('You can only upload JPG/PNG/GIF file!'); }
+        const isLt1M = file.size / 1024 / 1024 < 1;
+        if (!isLt1M) { message.error('Image must be smaller than 1MB!'); }
+        // Prevent auto-upload
+        return false;
+    };
+
+
     return (
         <Card title={<Title level={4} style={{ marginBottom: 0 }}>Create New Team</Title>}>
-            <Form
-                form={form}
-                layout="vertical"
-                onFinish={handleFinish}
-            >
+            <Form form={form} layout="vertical" onFinish={handleFinish}>
                 <Form.Item
                     name="name"
                     label="Team Name"
                     rules={[{ required: true, message: 'Please input the team name!' }]}
                 >
                     <Input placeholder="Enter team name" />
+                </Form.Item>
+
+                {/* Team Logo Upload Field */}
+                <Form.Item label="Team Logo (Optional)">
+                    {/* The '<Upload>' component that was causing the error */}
+                    <Upload
+                        listType="picture-card"
+                        fileList={logoFileList}
+                        beforeUpload={beforeLogoUpload}
+                        onChange={handleLogoUploadChange}
+                        onRemove={() => setLogoFileList([])}
+                        maxCount={1}
+                        accept=".jpg,.jpeg,.png,.gif"
+                    >
+                        {logoFileList.length < 1 && (
+                            <div>
+                                <UploadOutlined />
+                                <div style={{ marginTop: 8 }}>Upload</div>
+                            </div>
+                        )}
+                    </Upload>
                 </Form.Item>
 
                 <Form.Item
@@ -87,22 +132,19 @@ const TeamForm = ({ onTeamCreated }) => {
                     ]}
                 >
                     <Select
-                        mode="multiple" // Allow multiple player selections
-                        placeholder={`Select ${EXPECTED_TEAM_SIZE} players for the team`}
+                        mode="multiple"
+                        placeholder={`Select ${EXPECTED_TEAM_SIZE} players`}
                         loading={loadingPlayers}
                         allowClear
                         showSearch
-                        optionFilterProp="children" // Search by displayed text
+                        optionFilterProp="children"
                         filterOption={(input, option) =>
                             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                         }
-                        // Use options prop for better performance with many players
                         options={allPlayers.map(player => ({
                             value: player._id,
                             label: `${player.name} (${player.category})`
                         }))}
-                        // AntD Form validation for max count is better handled by rules
-                        // maxCount={EXPECTED_TEAM_SIZE} // This prop is for UI limit, not form validation
                     />
                 </Form.Item>
 

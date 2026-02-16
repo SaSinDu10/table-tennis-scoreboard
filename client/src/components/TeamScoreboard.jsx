@@ -19,14 +19,6 @@ const getTeamName = (match, teamNumber) => {
     return teamData?.name || `Team ${teamNumber}`;
 };
 
-// Helper function to convert setsToWin (1, 2, 3,7) to Best Of (1, 3, 5,7) for display
-// const setsToWinToBestOf = (sets) => {
-//     if (sets === 1) return 1;
-//     if (sets === 2) return 3;
-//     if (sets === 3) return 5;
-//     if (sets === 4) return 7;
-//     return 7;
-// };
 
 // This function now renders the avatars for a specific pair of players ---
 const renderCurrentPairAvatars = (players, isServing) => {
@@ -105,75 +97,75 @@ const TeamScoreboard = () => {
 
     // Memoized calculations for current set, available players etc.
     const {
-    nextEncounterIndex,
-    availableTeam1Players,
-    availableTeam2Players,
-    encounterSize,
-    playerSetCounts
-} = useMemo(() => {
-    // Start with empty defaults
-    const defaults = { nextEncounterIndex: 0, availableTeam1Players: [], availableTeam2Players: [], encounterSize: 1, playerSetCounts: new Map() };
+        nextEncounterIndex,
+        availableTeam1Players,
+        availableTeam2Players,
+        encounterSize,
+        playerSetCounts
+    } = useMemo(() => {
+        // Start with empty defaults
+        const defaults = { nextEncounterIndex: 0, availableTeam1Players: [], availableTeam2Players: [], encounterSize: 1, playerSetCounts: new Map() };
 
-    // --- FIX: More robust check to ensure all necessary data exists before proceeding ---
-    if (!matchData || !matchData.team1 || !matchData.team2 || !matchData.team1.players || !matchData.team2.players) {
-        console.log("useMemo: Exiting because matchData or nested team player data is not ready.", matchData);
-        // Determine encounter size from matchData even if players aren't populated yet
-        const encSize = matchData?.teamMatchEncounterFormat === 'Individual' ? 1 : 2;
-        return { ...defaults, encounterSize: encSize };
-    }
-    // ----------------------------------------------------------------------------------
-
-    console.log("--- useMemo: Recalculating ---");
-    console.log("Full Team 1 Players:", matchData.team1.players);
-    console.log("Full Team 2 Players:", matchData.team2.players);
-
-    // Determine which array to check for finished encounters
-    const finishedEncounters = (matchData.teamMatchSubType === 'Relay'
-        ? (matchData.score?.relayLegs || [])
-        : (matchData.score?.setDetails || [])
-    ).filter(s => s.status === 'Finished');
-
-    const nextIdx = finishedEncounters.length;
-    const encSize = matchData.teamMatchEncounterFormat === 'Individual' ? 1 : 2;
-
-    const pSetCounts = new Map();
-    const rule = matchData.teamMatchSubType === 'Relay' ? 'playOnce' : 'playMaxSets';
-    const maxSets = matchData.maxSetsPerPlayer || 2;
-
-    finishedEncounters.forEach(detail => {
-        const processPair = (pair) => (pair || []).forEach(p => {
-            const pId = p?._id?.toString() || p?.toString();
-            if (pId) pSetCounts.set(pId, (pSetCounts.get(pId) || 0) + 1);
-        });
-        processPair(detail.team1Players || detail.team1Pair);
-        processPair(detail.team2Players || detail.team2Pair);
-    });
-    console.log("Player Set Counts:", Object.fromEntries(pSetCounts)); // Log the calculated counts
-
-    const filterAvailable = (teamPlayers) => (teamPlayers || []).filter(player => {
-        if (!player?._id) return false;
-        const playedCount = pSetCounts.get(player._id.toString()) || 0;
-        if (rule === 'playOnce') {
-            return playedCount < 1;
+        // --- FIX: More robust check to ensure all necessary data exists before proceeding ---
+        if (!matchData || !matchData.team1 || !matchData.team2 || !matchData.team1.players || !matchData.team2.players) {
+            console.log("useMemo: Exiting because matchData or nested team player data is not ready.", matchData);
+            // Determine encounter size from matchData even if players aren't populated yet
+            const encSize = matchData?.teamMatchEncounterFormat === 'Individual' ? 1 : 2;
+            return { ...defaults, encounterSize: encSize };
         }
-        return playedCount < maxSets;
-    });
+        // ----------------------------------------------------------------------------------
 
-    const availableT1 = filterAvailable(matchData.team1.players);
-    const availableT2 = filterAvailable(matchData.team2.players);
+        console.log("--- useMemo: Recalculating ---");
+        console.log("Full Team 1 Players:", matchData.team1.players);
+        console.log("Full Team 2 Players:", matchData.team2.players);
 
-    console.log("Available Team 1 Players:", availableT1.map(p => p.name));
-    console.log("Available Team 2 Players:", availableT2.map(p => p.name));
+        // Determine which array to check for finished encounters
+        const finishedEncounters = (matchData.teamMatchSubType === 'Relay'
+            ? (matchData.score?.relayLegs || [])
+            : (matchData.score?.setDetails || [])
+        ).filter(s => s.status === 'Finished');
 
-    return {
-        nextEncounterIndex: nextIdx,
-        availableTeam1Players: availableT1,
-        availableTeam2Players: availableT2,
-        encounterSize: encSize,
-        playerSetCounts: pSetCounts
-    };
-}, [matchData]);
-        
+        const nextIdx = finishedEncounters.length;
+        const encSize = matchData.teamMatchEncounterFormat === 'Individual' ? 1 : 2;
+
+        const pSetCounts = new Map();
+        const rule = matchData.teamMatchSubType === 'Relay' ? 'playOnce' : 'playMaxSets';
+        const maxSets = matchData.maxSetsPerPlayer || 2;
+
+        finishedEncounters.forEach(detail => {
+            const processPair = (pair) => (pair || []).forEach(p => {
+                const pId = p?._id?.toString() || p?.toString();
+                if (pId) pSetCounts.set(pId, (pSetCounts.get(pId) || 0) + 1);
+            });
+            processPair(detail.team1Players || detail.team1Pair);
+            processPair(detail.team2Players || detail.team2Pair);
+        });
+        console.log("Player Set Counts:", Object.fromEntries(pSetCounts)); // Log the calculated counts
+
+        const filterAvailable = (teamPlayers) => (teamPlayers || []).filter(player => {
+            if (!player?._id) return false;
+            const playedCount = pSetCounts.get(player._id.toString()) || 0;
+            if (rule === 'playOnce') {
+                return playedCount < 1;
+            }
+            return playedCount < maxSets;
+        });
+
+        const availableT1 = filterAvailable(matchData.team1.players);
+        const availableT2 = filterAvailable(matchData.team2.players);
+
+        console.log("Available Team 1 Players:", availableT1.map(p => p.name));
+        console.log("Available Team 2 Players:", availableT2.map(p => p.name));
+
+        return {
+            nextEncounterIndex: nextIdx,
+            availableTeam1Players: availableT1,
+            availableTeam2Players: availableT2,
+            encounterSize: encSize,
+            playerSetCounts: pSetCounts
+        };
+    }, [matchData]);
+
 
 
     // --- Unified Handler for Submitting Player Selections ---
@@ -289,7 +281,7 @@ const TeamScoreboard = () => {
 
         return (
             <Card title={<Title level={4}>{formTitle}</Title>} style={{ marginTop: 20 }}>
-                {formError && <Alert message={`Error Starting ${encounterLabel}`} description={formError} type="error" showIcon closable onClose={()=>setFormError(null)} style={{marginBottom:16}}/>}
+                {formError && <Alert message={`Error Starting ${encounterLabel}`} description={formError} type="error" showIcon closable onClose={() => setFormError(null)} style={{ marginBottom: 16 }} />}
                 <Form form={pairSelectionForm} layout="vertical" onFinish={handleSetupEncounter} onFinishFailed={(err) => console.log('Validation Failed:', err)}>
                     <Row gutter={24}>
                         <Col xs={24} md={12}>
@@ -335,13 +327,11 @@ const TeamScoreboard = () => {
             if (!currentLiveSetDetail) {
                 return <Alert message="Waiting for next set setup..." type="info" showIcon />;
             }
-            
-            //const currentSetNumberForDisplay = (matchData.score?.setDetails?.filter(s => s.status === 'Finished').length || 0) + 1;
-            
+
             const currentSetNumberForDisplay = nextEncounterIndex + 1;
 
             // Find the full player objects for the current pair
-            const team1PlayingPair = (currentLiveSetDetail.team1Pair || []).map(pIdObj => 
+            const team1PlayingPair = (currentLiveSetDetail.team1Pair || []).map(pIdObj =>
                 matchData.team1?.players.find(p => p._id === (pIdObj._id || pIdObj))
             ).filter(Boolean);
             const team2PlayingPair = (currentLiveSetDetail.team2Pair || []).map(pIdObj =>
@@ -358,6 +348,9 @@ const TeamScoreboard = () => {
                         <Col xs={24} sm={10}>
                             <Space direction="vertical" align="center" size="middle">
                                 {renderCurrentPairAvatars(team1PlayingPair, matchData.score.server === 1)}
+                                <Space align="center" size="large">
+                                    <Avatar size={100} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
+                                </Space>
                                 <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 1)}</Title>
                                 <Statistic title="Overall Sets Won" value={matchData.score?.currentSetScore?.team1 ?? 0} />
                             </Space>
@@ -366,6 +359,9 @@ const TeamScoreboard = () => {
                         <Col xs={24} sm={10}>
                             <Space direction="vertical" align="center" size="middle">
                                 {renderCurrentPairAvatars(team2PlayingPair, matchData.score.server === 2)}
+                                <Space align="center" size="large">
+                                    <Avatar size={100} src={matchData.team2?.logoUrl ? `${API_URL}${matchData.team2.logoUrl}` : undefined} icon={<UserOutlined />} />
+                                </Space>
                                 <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 2)}</Title>
                                 <Statistic title="Overall Sets Won" value={matchData.score?.currentSetScore?.team2 ?? 0} />
                             </Space>
@@ -404,17 +400,17 @@ const TeamScoreboard = () => {
             );
         }
 
-       // --- 'Relay' Match Live UI ---
+        // --- 'Relay' Match Live UI ---
         if (matchData.teamMatchSubType === 'Relay') {
             const currentLeg = matchData.score?.relayLegs?.find(l => l.status === 'Live');
             if (!currentLeg) return <Alert message="Waiting for next leg setup..." type="info" showIcon />;
-            
+
             const currentLegNumber = currentLeg.legNumber;
             const legTargetScore = (matchData.setPointTarget || 10) * currentLegNumber;
             const finalTargetScore = (matchData.setPointTarget || 10) * (matchData.numberOfSets || 1);
 
             // --- FIX: DEFINE THE PLAYING PAIR VARIABLES HERE ---
-            const team1PlayingPair = (currentLeg.team1Players || []).map(pId => 
+            const team1PlayingPair = (currentLeg.team1Players || []).map(pId =>
                 matchData.team1?.players.find(p => p._id === (pId._id || pId))
             ).filter(Boolean);
             const team2PlayingPair = (currentLeg.team2Players || []).map(pId =>
@@ -428,6 +424,10 @@ const TeamScoreboard = () => {
                         <Col xs={24} sm={10}>
                             <Space direction="vertical" align="center" size="middle">
                                 {renderCurrentPairAvatars(team1PlayingPair, matchData.score.server === 1)}
+                                <Space align="center" size="large">
+                                    <Avatar size={100} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
+                                    
+                                </Space>
                                 <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 1)}</Title>
                             </Space>
                         </Col>
@@ -437,6 +437,10 @@ const TeamScoreboard = () => {
                         <Col xs={24} sm={10}>
                             <Space direction="vertical" align="center" size="middle">
                                 {renderCurrentPairAvatars(team2PlayingPair, matchData.score.server === 2)}
+                                <Space align="center" size="large">
+                                    <Avatar size={100} src={matchData.team2?.logoUrl ? `${API_URL}${matchData.team2.logoUrl}` : undefined} icon={<UserOutlined />} />
+                                    
+                                </Space>
                                 <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 2)}</Title>
                             </Space>
                         </Col>
@@ -448,7 +452,7 @@ const TeamScoreboard = () => {
                             {!isFinished && <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => handleScoreUpdate(1)} loading={isUpdatingScore || isUndoing} disabled={isUndoing || isFinished} block>Point</Button>}
                         </Col>
                         <Col span={4} style={{ textAlign: 'center', fontSize: '3rem', color: '#aaa' }}>
-                            
+
                         </Col>
                         <Col span={10} style={{ textAlign: 'center' }}>
                             <Statistic value={matchData.score.overallScore?.team2 ?? 0} valueStyle={{ fontSize: '4rem' }} />

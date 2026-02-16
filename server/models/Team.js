@@ -13,7 +13,10 @@ const teamSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Player',
         required: true
-    }]
+    }],
+    logoUrl: {
+        type: String
+    }
     
     // Add a tournamentId or leagueId if teams are specific to events later
 }, { timestamps: true });

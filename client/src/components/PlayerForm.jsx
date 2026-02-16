@@ -66,7 +66,7 @@ const PlayerForm = ({ onPlayerAdded }) => {
 
     return (
         // Wrap the Form in a Card for visual grouping and padding
-        <Card title={<Title level={4} style={{ marginBottom: 0 }}>Add New Player</Title>}>
+        <Card title={<Title level={2} style={{ marginBottom: 0 , textAlign: 'center'}}>Add New Player</Title>}>
             <Form
                 form={form}
                 layout="vertical" // Vertical layout is usually clearer for forms

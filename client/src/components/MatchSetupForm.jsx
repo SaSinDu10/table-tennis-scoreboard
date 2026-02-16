@@ -78,7 +78,7 @@ const MatchSetupForm = ({ onMatchCreated }) => {
     };
 
     return (
-        <Card title={<Title level={4} style={{ marginBottom: 0 }}>Setup New Match</Title>}>
+        <Card title={<Title level={2} style={{ marginBottom: 0, textAlign: 'center' }}>Setup New Match</Title>}>
             {loadingPlayers ? (
                 <div style={{ textAlign: 'center', padding: 20 }}>
                     <Spin tip="Loading Players..." />

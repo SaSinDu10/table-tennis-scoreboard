@@ -78,7 +78,7 @@ const TeamSetMatchSetup = ({ onTeamMatchCreated }) => {
     }
 
     return (
-        <Card title={<Title level={4} style={{ marginBottom: 0 }}>Setup New Team Match</Title>}>
+        <Card title={<Title level={4} style={{ marginBottom: 0}}>Setup New "SET - Type" Team Match</Title>}>
             <Form
                 form={form}
                 layout="vertical"

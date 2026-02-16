@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const playerSchema = new Schema({
     name: { type: String, required: true, unique: true },
     category: { type: String, enum: ['Super Senior', 'Senior', 'Junior'], required: true },
-    photoUrl: { type: String } // Stores the path/URL to the photo
+    photoUrl: { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Player', playerSchema);

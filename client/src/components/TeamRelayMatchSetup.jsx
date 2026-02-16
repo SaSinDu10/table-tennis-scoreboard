@@ -77,12 +77,12 @@ const TeamRelayMatchSetup = ({ onTeamMatchCreated }) => {
     }
 
     return (
-        <Card title={<Title level={4} style={{ marginBottom: 0 }}>Setup New Team Relay Match</Title>}>
+        <Card title={<Title level={4} style={{ marginBottom: 0}}>Setup New "RELAY - Type" Team Relay Match</Title>}>
             <Form
                 form={form}
                 layout="vertical"
                 onFinish={handleFinish}
-                initialValues={{ numberOfLegs: 5, pointsPerLeg: 10, encounterFormat: 'Individual' /* No category default */ }}
+                initialValues={{ numberOfLegs: 5, pointsPerLeg: 10, encounterFormat: 'Individual'}}
             >
 
                 <Form.Item name="team1Id" label="Select Team 1" rules={[{ required: true, message: 'Please select Team 1!' }]}>

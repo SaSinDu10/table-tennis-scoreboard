@@ -49,7 +49,7 @@ const TeamMatchSetup = ({ onTeamMatchCreated }) => {
     if (loadingTeams) { return <Card><Spin /></Card>; }
 
     return (
-        <Card title={<Title level={4}>Setup New Team Match</Title>}>
+        <Card title={<Title level={2}>Setup New Team Match</Title>} style={{ textAlign: 'center'}}>
             <Form form={form} layout="vertical" onFinish={handleFinish}>
                 <Form.Item name="category" label="Match Category" rules={[{ required: true }]}>
                     <Select placeholder="Select category">
