@@ -27,7 +27,7 @@ const PlayerRankings = () => {
             }
         };
         fetchRankings();
-    }, []); // Fetch only on component mount
+    }, []);
 
     // Define table columns
     const columns = [
@@ -44,12 +44,18 @@ const PlayerRankings = () => {
             render: (text, record) => (
                 <Space>
                     <Avatar
+                        size={48}
                         src={record.photoUrl ? `${API_URL}${record.photoUrl}` : undefined}
                         icon={!record.photoUrl ? <UserOutlined /> : null}
                     >
                         {!record.photoUrl ? record.name?.charAt(0)?.toUpperCase() : null}
                     </Avatar>
-                    <span>{record.name} ({record.category})</span>
+                    <span style={{ fontSize: '1.4em', fontWeight: 500 }}>
+                        {record.name}
+                        <span style={{ display: 'block', fontSize: '0.85em', fontWeight: 400, color: '#888' }}>
+                            ({record.category})
+                        </span>
+                    </span>
                 </Space>
             ),
         },
@@ -60,7 +66,7 @@ const PlayerRankings = () => {
             sorter: (a, b) => a.points - b.points,
             defaultSortOrder: 'descend',
             width: 150,
-            align: 'right',
+            align: 'center',
         },
         {
             title: 'Wins',
@@ -72,23 +78,55 @@ const PlayerRankings = () => {
         },
     ];
 
+    // --- FUNCTION FOR CONDITIONAL ROW STYLING ---
+    const getRowClassName = (record, index) => {
+        const rank = index + 1;
+        const totalPlayers = rankings.length;
+
+        if (rank <= 5) {
+            return 'rank-top-5'; // Green
+        }
+        if (rank > totalPlayers - 5) {
+            return 'rank-bottom-5'; // Red
+        }
+        return 'rank-middle'; // Yellow
+    };
+
     if (error) {
         return <Alert message="Error" description={error} type="error" showIcon />;
     }
 
     return (
-        <Card title={<Title level={4}>Player Rankings</Title>}>
-            <Spin spinning={loading} tip="Loading Rankings...">
-                <Table
-                    columns={columns}
-                    dataSource={rankings}
-                    loading={loading}
-                    rowKey="_id"
-                    pagination={{ pageSize: 10 }}
-                />
-            </Spin>
-        </Card>
-    );
+        <>
+        <style>{`
+                .rank-top-5 {
+                    background-color: #cdf7e3 !important; /* Light green */
+                }
+                .rank-bottom-5 {
+                    background-color: #f8bbc0 !important; /* Light red */
+                }
+                .rank-middle {
+                    background-color: #f3f8cd !important; /* Light yellow */
+                }
+                /* Optional: Add hover effect */
+                .ant-table-tbody > tr:hover > td {
+                    background-color: #e6f4ff !important;
+                }
+            `}</style>
+            <Card title={<Title level={1}>Player Rankings</Title>} style={{ textAlign: 'center'}}>
+                <Spin spinning={loading} tip="Loading Rankings...">
+                    <Table
+                        columns={columns}
+                        dataSource={rankings}
+                        loading={loading}
+                        rowKey="_id"
+                        pagination={{ pageSize: 50 }}
+                        rowClassName={getRowClassName}
+                    />
+                </Spin>
+            </Card>
+        </>
+        );
 };
 
 export default PlayerRankings;
