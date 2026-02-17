@@ -3,9 +3,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Typography, Spin, Alert, Card, Row, Col, Button, Select,
-    Divider, List, Tag, message, Avatar, Space, Tooltip, Form, Radio, Statistic
+    Divider, List, Tag, message, Avatar, Space, Tooltip, Form, Radio, Statistic, Result
 } from 'antd';
-import { ArrowLeftOutlined, UserOutlined, PlusOutlined, UndoOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, UserOutlined, PlusOutlined, UndoOutlined, TrophyOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Title, Text } = Typography;
@@ -426,7 +426,7 @@ const TeamScoreboard = () => {
                                 {renderCurrentPairAvatars(team1PlayingPair, matchData.score.server === 1)}
                                 <Space align="center" size="large">
                                     <Avatar size={100} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
-                                    
+
                                 </Space>
                                 <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 1)}</Title>
                             </Space>
@@ -439,7 +439,7 @@ const TeamScoreboard = () => {
                                 {renderCurrentPairAvatars(team2PlayingPair, matchData.score.server === 2)}
                                 <Space align="center" size="large">
                                     <Avatar size={100} src={matchData.team2?.logoUrl ? `${API_URL}${matchData.team2.logoUrl}` : undefined} icon={<UserOutlined />} />
-                                    
+
                                 </Space>
                                 <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 2)}</Title>
                             </Space>
@@ -466,82 +466,39 @@ const TeamScoreboard = () => {
     };
 
     const renderFinishedMatch = () => {
-        // Determine winner name based on match type and winner data
-        let winnerName = 'N/A';
-        if (matchData.winner) {
-            // For Team Matches, winner is stored as team number 1 or 2
-            winnerName = matchData.winner === 1 ? getTeamName(matchData, 1) : getTeamName(matchData, 2);
-        }
-
-        // Determine which list of encounters to display
-        const finishedEncounters = (matchData.teamMatchSubType === 'Relay'
-            ? matchData.score?.relayLegs
-            : matchData.score?.setDetails
-        )?.filter(s => s.status === 'Finished') || [];
-
-        const encounterLabel = matchData.teamMatchSubType === 'Relay' ? 'Leg' : 'Set';
+        const winningTeamData = matchData.winner === 1 ? matchData.team1 : matchData.team2;
+        const winnerName = winningTeamData?.name || 'N/A';
+        const winnerLogoUrl = winningTeamData?.logoUrl ? `${API_URL}${winningTeamData.logoUrl}` : undefined;
 
         return (
-            <Card title="Match Finished" style={{ marginTop: 20 }}>
-                <Alert
-                    message={<Title level={4} style={{ margin: 0 }}>Match Over!</Title>}
-                    description={
-                        <Space direction="vertical">
-                            <Text strong>Winner: {winnerName}</Text>
-                            {/* For Set matches, show the final set score */}
-                            {matchData.teamMatchSubType === 'Set' && (
-                                <Text>
-                                    Final Set Score: {matchData.score?.currentSetScore?.team1 ?? 0} - {matchData.score?.currentSetScore?.team2 ?? 0}
-                                </Text>
-                            )}
-                            {/* For Relay matches, show the final overall score */}
-                            {matchData.teamMatchSubType === 'Relay' && (
-                                <Text>
-                                    Final Score: {matchData.score?.overallScore?.team1 ?? 0} - {matchData.score?.overallScore?.team2 ?? 0}
-                                </Text>
-                            )}
-                        </Space>
-                    }
-                    type="success"
-                    showIcon
-                />
+            <Result
+                icon={<TrophyOutlined style={{ color: '#52c41a' }} />}
+                title={<Title level={2} style={{ color: '#52c41a' }}>Congratulations, {winnerName}!</Title>}
+                subTitle="You have won the match."
+                extra={[
+                    // Display final score
+                    <Title level={4} key="final-score">
+                        {matchData.teamMatchSubType === 'Set'
+                            ? `Final Set Score: ${matchData.score?.currentSetScore?.team1 ?? 0} - ${matchData.score?.currentSetScore?.team2 ?? 0}`
+                            : `Final Score: ${matchData.score?.overallScore?.team1 ?? 0} - ${matchData.score?.overallScore?.team2 ?? 0}`
+                        }
+                    </Title>,
+                    // Display winner's logo
+                    <Avatar
+                        key="winner-logo"
+                        size={128} // Large logo
+                        src={winnerLogoUrl}
+                        icon={!winnerLogoUrl ? <UserOutlined /> : null}
+                        style={{ marginTop: 24, border: '4px solid #f6ffed' }}
+                    />,
+                    
+                ]}
+                style={{
+                    padding: '48px 0' // Add padding for better look
+                }}
+            />
+            
 
-                {/* Display a summary of all completed sets/legs */}
-                {finishedEncounters.length > 0 && (
-                    <>
-                        <Divider>Completed {encounterLabel}s</Divider>
-                        <List
-                            size="small"
-                            bordered
-                            dataSource={finishedEncounters}
-                            renderItem={(encounter, index) => {
-                                // Get player names for this specific encounter
-                                const team1PairNames = (encounter.team1Players || encounter.team1Pair || []).map(p => p.name).join(' & ');
-                                const team2PairNames = (encounter.team2Players || encounter.team2Pair || []).map(p => p.name).join(' & ');
-
-                                // Get the final score for this encounter
-                                let scoreText;
-                                if (matchData.teamMatchSubType === 'Relay') {
-                                    scoreText = `${encounter.endScoreTeam1} - ${encounter.endScoreTeam2}`;
-                                } else { // Set Match
-                                    scoreText = `${encounter.team1Score} - ${encounter.team2Score}`;
-                                }
-
-                                return (
-                                    <List.Item>
-                                        <List.Item.Meta
-                                            title={<Text strong>{encounterLabel} {index + 1}</Text>}
-                                            description={`${team1PairNames} vs ${team2PairNames}`}
-                                        />
-                                        <Text>{scoreText}</Text>
-                                    </List.Item>
-                                );
-                            }}
-                            style={{ maxWidth: 500, margin: '24px auto 0 auto' }}
-                        />
-                    </>
-                )}
-            </Card>
         );
     };
 
@@ -564,10 +521,7 @@ const TeamScoreboard = () => {
             {isLive && renderLiveScoreboard()}
             {isFinished && renderFinishedMatch()}
 
-            <Divider>Debug: Raw Match Data</Divider>
-            <pre style={{ fontSize: '0.8em', background: '#f5f5f5', padding: '10px', borderRadius: '4px', marginTop: 20, maxHeight: 300, overflowY: 'auto' }}>
-                {JSON.stringify(matchData, null, 2)}
-            </pre>
+            
         </Card>
     );
 };

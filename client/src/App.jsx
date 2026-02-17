@@ -37,10 +37,9 @@ function App() {
     // React Router hooks
     const navigate = useNavigate();
     const location = useLocation();
-    const isScoreboardRoute = useMatch("/match/:id/score");
     const onStandardScoreboard = useMatch("/match/:id/score");
     const onTeamScoreboard = useMatch("/team-match/:id/score");
-    const hideSider = onStandardScoreboard || onTeamScoreboard;
+    const isScoreboardRoute = onStandardScoreboard || onTeamScoreboard;
 
     // Function to fetch players - memoized with useCallback
     const fetchPlayers = useCallback(async () => {
@@ -121,14 +120,14 @@ function App() {
     // Determine selected menu key based on route
     const getSelectedKey = () => {
         const path = location.pathname;
-        if (hideSider) return null;
-        if (path === '/team-matches') return '4';
-        if (path === '/rankings') return '5';
+        if (isScoreboardRoute) return null;
         if (path === '/teams') return '2';
         if (path === '/setup-match') return '3';
-        if (path === '/') return '1';
+        if (path === '/team-matches') return '4';
+        if (path === '/rankings') return '5';
         return '1';
     };
+
     const menuItems = [
         { key: '1', label: 'Players', icon: <UserOutlined /> },
         { key: '2', label: 'Teams', icon: <UsergroupAddOutlined /> },
@@ -164,74 +163,80 @@ function App() {
                 </Header>
 
                 {/* Main Content Area */}
-                <Content style={{
-                    margin: '24px 16px 0',
-                    padding: isScoreboardRoute ? 0 : 24,
-                    background: '#fff',
-                    minHeight: 280,
-                }}>
-                    <Routes>
-                        <Route
-                            path="/"
-                            element={
-                                <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                    <PlayerForm onPlayerAdded={handlePlayerAdded} />
-                                    {/* Render PLAYER list, passing correct props */}
-                                    <PlayerList
-                                        players={players}
-                                        loading={loadingPlayers}
-                                        error={errorPlayers}
-                                        title="All Players"
-                                    />
-                                </Space>
-                            }
-                        />
-                        {/* --- Teams Management Route --- */}
-                        <Route
-                            path="/teams"
-                            element={
-                                <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                    <TeamForm onTeamCreated={handleTeamCreated} />
-                                    <TeamList teams={teams} loading={loadingTeams} error={errorTeams} title="Registered Teams" />
-                                </Space>
-                            }
-                        />
-                        {/* Match Setup & Lists Route */}
-                        <Route
-                            path="/setup-match"
-                            element={
-                                <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                    <MatchSetupForm onMatchCreated={handleMatchCreated} />
-                                    <MatchList key={`upcoming-${matchListVersion}`} status="Upcoming" title="Upcoming Matches" />
-                                    <MatchList key={`live-${matchListVersion}`} status="Live" title="Live Matches" />
-                                    <MatchList key={`finished-${matchListVersion}`} status="Finished" title="Finished Matches" />
-                                </Space>
-                            }
-                        />
-                        <Route
-                            path="/team-matches" // Landing page for team matches
-                            element={<TeamMatchesLanding />}
-                        />
-                        <Route
-                            path="/team-matches/setup-set" // Page to setup a "Set" type team match
-                            element={
-                                <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                    <TeamSetMatchSetup onTeamMatchCreated={handleTeamMatchCreated} />
-                                    <MatchList key={`upcoming-teamset-${matchListVersion}`} status="Upcoming" title="Upcoming Team Set Matches" matchTypeFilter="TeamSet" />
-                                </Space>
-                            }
-                        />
-                        <Route
-                            path="/team-matches/setup-relay"
-                            element={<TeamRelayMatchSetup onTeamMatchCreated={handleMatchCreated} />} // Use the imported component
-                        />
-                        {/* Scoreboard Route */}
-                        <Route path="/match/:id/score" element={<Scoreboard />} />
-                        {/* --- NEW Team Scoreboard Route --- */}
-                        <Route path="/team-match/:id/score" element={<TeamScoreboard />} />
-                        {/* Player Rankings Route */}
-                        <Route path="/rankings" element={<PlayerRankings />} />
-                    </Routes>
+                <Content style={{ margin: '24px 16px 0', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{
+                        padding: isScoreboardRoute ? '0 16px' : 24, // Add some horizontal padding for scoreboard
+                        background: '#fff',
+                        flex: '1 0 auto' // Allow content to grow but not shrink below content size
+                    }}>
+                        <div style={{
+                            padding: isScoreboardRoute ? 0 : 24,
+                            background: isScoreboardRoute ? 'transparent' : '#fff',
+                            flex: 1
+                        }}></div>
+                        <Routes>
+                            <Route
+                                path="/"
+                                element={
+                                    <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
+                                        <PlayerForm onPlayerAdded={handlePlayerAdded} />
+                                        {/* Render PLAYER list, passing correct props */}
+                                        <PlayerList
+                                            players={players}
+                                            loading={loadingPlayers}
+                                            error={errorPlayers}
+                                            title="All Players"
+                                        />
+                                    </Space>
+                                }
+                            />
+                            {/* --- Teams Management Route --- */}
+                            <Route
+                                path="/teams"
+                                element={
+                                    <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
+                                        <TeamForm onTeamCreated={handleTeamCreated} />
+                                        <TeamList teams={teams} loading={loadingTeams} error={errorTeams} title="Registered Teams" />
+                                    </Space>
+                                }
+                            />
+                            {/* Match Setup & Lists Route */}
+                            <Route
+                                path="/setup-match"
+                                element={
+                                    <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
+                                        <MatchSetupForm onMatchCreated={handleMatchCreated} />
+                                        <MatchList key={`upcoming-${matchListVersion}`} status="Upcoming" title="Upcoming Matches" />
+                                        <MatchList key={`live-${matchListVersion}`} status="Live" title="Live Matches" />
+                                        <MatchList key={`finished-${matchListVersion}`} status="Finished" title="Finished Matches" />
+                                    </Space>
+                                }
+                            />
+                            <Route
+                                path="/team-matches" // Landing page for team matches
+                                element={<TeamMatchesLanding />}
+                            />
+                            <Route
+                                path="/team-matches/setup-set" // Page to setup a "Set" type team match
+                                element={
+                                    <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
+                                        <TeamSetMatchSetup onTeamMatchCreated={handleTeamMatchCreated} />
+                                        <MatchList key={`upcoming-teamset-${matchListVersion}`} status="Upcoming" title="Upcoming Team Set Matches" matchTypeFilter="TeamSet" />
+                                    </Space>
+                                }
+                            />
+                            <Route
+                                path="/team-matches/setup-relay"
+                                element={<TeamRelayMatchSetup onTeamMatchCreated={handleMatchCreated} />} // Use the imported component
+                            />
+                            {/* Scoreboard Route */}
+                            <Route path="/match/:id/score" element={<Scoreboard />} />
+                            {/* --- NEW Team Scoreboard Route --- */}
+                            <Route path="/team-match/:id/score" element={<TeamScoreboard />} />
+                            {/* Player Rankings Route */}
+                            <Route path="/rankings" element={<PlayerRankings />} />
+                        </Routes>
+                    </div>
                 </Content>
 
                 <Footer style={{ textAlign: 'center', background: '#f0f2f5', padding: '15px 50px' }}>
