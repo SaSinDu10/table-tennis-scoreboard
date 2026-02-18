@@ -41,6 +41,44 @@ const getNextServer = (currentGameScore, currentServer) => {
     return currentServer;
 };
 
+// --- SCORE UPDATE LOGIC - This is now only for Ind/Dual ---
+const updateIndDualScoreAndCheckWin = (match, scoringTeam) => {
+    if (!match || match.status !== 'Live') { throw new Error('Match is not live.'); }
+    const { currentGame, currentSetScore, server, sets } = match.score;
+    const setsToWin = match.setsToWin;
+
+    if (scoringTeam === 1) currentGame.team1++; else currentGame.team2++;
+
+    let gameWinner = null;
+    if (currentGame.team1 >= 11 && currentGame.team1 >= currentGame.team2 + 2) gameWinner = 1;
+    else if (currentGame.team2 >= 11 && currentGame.team2 >= currentGame.team1 + 2) gameWinner = 2;
+
+    if (gameWinner) {
+        sets.push([currentGame.team1, currentGame.team2]);
+        if (gameWinner === 1) currentSetScore.team1++; else currentSetScore.team2++;
+        currentGame.team1 = 0; currentGame.team2 = 0;
+        match.score.server = gameWinner === 1 ? 2 : 1;
+
+        let matchWinnerNum = null;
+        if (currentSetScore.team1 >= setsToWin) matchWinnerNum = 1;
+        else if (currentSetScore.team2 >= setsToWin) matchWinnerNum = 2;
+
+        if (matchWinnerNum) {
+            match.status = 'Finished';
+            match.endTime = new Date();
+            if (match.matchType === 'Individual') {
+                match.winner = (matchWinnerNum === 1) ? match.player1 : match.player2;
+            } else {
+                match.winner = matchWinnerNum;
+            }
+        }
+    } else {
+        match.score.server = getNextServer(currentGame, server);
+    }
+    match.markModified('score');
+    return match;
+};
+
 
 // === API Route Handlers ===
 
@@ -293,7 +331,7 @@ router.put('/:id/score', async (req, res) => {
             const legStartPoints = liveLegIndex > 0 ? (match.score.relayLegs[liveLegIndex - 1].endScoreTeam1 + match.score.relayLegs[liveLegIndex - 1].endScoreTeam2) : 0;
             if ((team1Total + team2Total - legStartPoints) % 2 === 0) { match.score.server = match.score.server === 1 ? 2 : 1; }
         } else {
-            // --- SET & IND/DUAL SCORING ---
+            // SET MATCH & IND/DUAL LOGIC
             const { currentGame, currentSetScore, server } = match.score;
             const setsToWin = match.matchType === 'Team' ? Math.ceil(match.numberOfSets / 2) : match.setsToWin;
             if (scoringTeam === 1) currentGame.team1++; else currentGame.team2++;
@@ -312,8 +350,20 @@ router.put('/:id/score', async (req, res) => {
                     match.score.setDetails[liveSetIndex].team1Score = finalGameScore[0];
                     match.score.setDetails[liveSetIndex].team2Score = finalGameScore[1];
                 } else { match.score.sets.push(finalGameScore); }
-                if (currentSetScore.team1 >= setsToWin || currentSetScore.team2 >= setsToWin) {
-                    match.status = 'Finished'; match.winner = currentSetScore.team1 > currentSetScore.team2 ? 1 : 2; match.endTime = new Date();
+
+                // Check for match win AFTER updating set scores/details
+                let matchWinnerNum = null;
+                if (currentSetScore.team1 >= setsToWin) matchWinnerNum = 1;
+                else if (currentSetScore.team2 >= setsToWin) matchWinnerNum = 2;
+
+                if (matchWinnerNum) {
+                    match.status = 'Finished'; match.endTime = new Date();
+                    // --- THE FINAL FIX IS HERE ---
+                    if (match.matchType === 'Individual') {
+                        match.winner = (matchWinnerNum === 1) ? match.player1 : match.player2; // Assign ObjectId
+                    } else { // Dual or Team
+                        match.winner = matchWinnerNum; // Assign team number
+                    }
                 } else if (match.matchType === 'Team') {
                     const totalSetsPlayed = match.score.setDetails.filter(s => s.status === 'Finished').length;
                     if (totalSetsPlayed >= match.numberOfSets) {
@@ -323,7 +373,6 @@ router.put('/:id/score', async (req, res) => {
                 }
             } else { match.score.server = getNextServer(currentGame, server); }
         }
-
         match.markModified('score');
         let updatedMatch = await match.save();
         updatedMatch = await populateMatch(updatedMatch);
