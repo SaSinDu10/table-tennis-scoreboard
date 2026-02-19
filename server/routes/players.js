@@ -5,6 +5,9 @@ const Player = require('../models/Player');
 const upload = require('../middleware/upload');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+
+const { uploadPlayerImage } = require('../middleware/upload');
 
 // --- GET all players ---
 router.get('/', async (req, res) => {
@@ -22,25 +25,24 @@ router.get('/', async (req, res) => {
 // --- POST create a new player (Handles file upload) ---
 router.post('/', (req, res) => {
     console.log('--- POST /api/players ROUTE HIT ---');
-    upload(req, res, async (err) => {
+    uploadPlayerImage(req, res, async (err) => {
+        // Handle potential Multer errors
         if (err) {
-            console.error("Multer Error:", err);
+            console.error("Player Photo Multer Error:", err);
             if (err instanceof multer.MulterError) {
                 return res.status(400).json({ message: `File upload error: ${err.code}` });
-            } else {
-                return res.status(400).json({ message: err.message || err });
             }
+            return res.status(400).json({ message: err.message || "File upload error" });
         }
 
-        // console.log('Multer processed file (if any). Req file:', req.file);
-        // console.log('Request Body:', req.body);
+        console.log('Multer processed file (if any). Req file:', req.file);
+        console.log('Request Body:', req.body);
         const { name, category } = req.body;
 
-        // --- Validate Text Fields ---
+        // Validate Text Fields
         if (!name || !category) {
-            // console.warn("Validation failed: Name or category missing.");
-            if (req.file) {
-                // console.log(`Deleting orphaned file: ${req.file.path}`);
+            console.warn("Validation failed: Name or category missing.");
+            if (req.file) { // Clean up orphaned file
                 fs.unlink(req.file.path, (unlinkErr) => {
                     if (unlinkErr) console.error("Error deleting orphaned file:", unlinkErr);
                 });
@@ -48,40 +50,28 @@ router.post('/', (req, res) => {
             return res.status(400).json({ message: 'Player name and category are required.' });
         }
 
-        // Construct photoUrl if file was uploaded
-        const photoUrl = req.file ? `/uploads/players/${req.file.filename}` : null;
-        // console.log(`Photo URL determined: ${photoUrl}`);
-
-        // Create new Player document
         const newPlayer = new Player({
             name: name,
             category: category,
-            photoUrl: photoUrl
+            photoUrl: req.file ? `/uploads/players/${req.file.filename}` : null
         });
 
-        // --- Save to Database ---
+        // Save to Database
         try {
             console.log('Attempting to save new player...');
             const savedPlayer = await newPlayer.save();
-            // console.log(`Player saved successfully: ${savedPlayer._id}`);
+            console.log(`Player saved successfully: ${savedPlayer._id}`);
             res.status(201).json(savedPlayer);
         } catch (dbErr) {
             console.error("!!! Database Error saving player:", dbErr);
-            if (req.file) {
-                console.log(`DB save failed. Deleting orphaned file: ${req.file.path}`);
+            if (req.file) { // Clean up orphaned file on DB error
                 fs.unlink(req.file.path, (unlinkErr) => {
                     if (unlinkErr) console.error("Error deleting orphaned file after DB error:", unlinkErr);
                 });
             }
-
-            // Handle specific DB errors
-            if (dbErr.code === 11000) { 
+            if (dbErr.code === 11000) { // Duplicate name error
                 return res.status(400).json({ message: `Player name '${name}' already exists.` });
             }
-            if (dbErr.name === 'ValidationError') {
-                return res.status(400).json({ message: 'Validation failed', error: dbErr.message });
-            }
-            // Generic server error for other DB issues
             res.status(500).json({ message: 'Server error saving player', error: dbErr.message });
         }
     });
@@ -117,10 +107,6 @@ router.delete('/:id', async (req, res) => {
         console.log(`Finding player ${req.params.id} to delete...`);
         const player = await Player.findById(req.params.id);
         if (!player) { return res.status(404).json({ message: 'Player not found' }); }
-
-        // --- CAUTION: Add logic here to handle matches this player is in ---
-        // Option 1: Prevent deletion if in matches?
-        // Option 2: Delete/update related matches? (Complex)
         console.warn(`DELETING PLAYER ${player.name} - Match handling not implemented!`);
         // -------------------------------------------------------------------
 

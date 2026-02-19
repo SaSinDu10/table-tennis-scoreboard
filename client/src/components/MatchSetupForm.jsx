@@ -72,13 +72,13 @@ const MatchSetupForm = ({ onMatchCreated }) => {
             setSubmitting(false);
         }
     };
-    
+
     // --- A new helper function that filters by category AND excludes IDs ---
     const getAvailablePlayers = (category, excludeIds = []) => {
         if (!players || !category) return [];
         return players.filter(p => p.category === category && !excludeIds.includes(p._id));
     };
-    
+
     // --- Handler to clear player selections when category changes ---
     const onCategoryChange = () => {
         form.setFieldsValue({
@@ -89,7 +89,7 @@ const MatchSetupForm = ({ onMatchCreated }) => {
             player4Id: undefined
         });
     };
-    
+
     // --- Handler to clear player selections when match type changes ---
     const onMatchTypeChange = (e) => {
         const newType = e.target.value;
@@ -121,7 +121,7 @@ const MatchSetupForm = ({ onMatchCreated }) => {
                         label="Category"
                         rules={[{ required: true, message: 'Please select category first!' }]}
                     >
-                        
+
                         <Select placeholder="Select match category" onChange={onCategoryChange} allowClear>
                             <Option value="Super Senior">Super Senior</Option>
                             <Option value="Senior">Senior</Option>
@@ -184,7 +184,7 @@ const MatchSetupForm = ({ onMatchCreated }) => {
                                         </>
                                     ) : ( // Dual Match
                                         <>
-                                            <Title level={5} style={{marginTop: 10}}>Team 1</Title>
+                                            <Title level={5} style={{ marginTop: 10 }}>Team 1</Title>
                                             <Form.Item name="player1Id" label="Team 1 - Player 1" rules={[{ required: true }]}>
                                                 <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
                                                     {getAvailablePlayers(selectedCategory, [p2_dual, p3, p4]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
@@ -196,16 +196,16 @@ const MatchSetupForm = ({ onMatchCreated }) => {
                                                 </Select>
                                             </Form.Item>
 
-                                            <Title level={5} style={{marginTop: 10}}>Team 2</Title>
+                                            <Title level={5} style={{ marginTop: 10 }}>Team 2</Title>
                                             <Form.Item name="player3Id" label="Team 2 - Player 1" rules={[{ required: true }]}>
-                                                 <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
+                                                <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
                                                     {getAvailablePlayers(selectedCategory, [p1, p2_dual, p4]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
-                                                 </Select>
+                                                </Select>
                                             </Form.Item>
                                             <Form.Item name="player4Id" label="Team 2 - Player 2" rules={[{ required: true }]}>
-                                                 <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
+                                                <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
                                                     {getAvailablePlayers(selectedCategory, [p1, p2_dual, p3]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
-                                                 </Select>
+                                                </Select>
                                             </Form.Item>
                                         </>
                                     )}

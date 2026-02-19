@@ -1,8 +1,7 @@
 // src/components/TeamForm.jsx
+
 import React, { useState, useEffect } from 'react';
-// --- FIX: Add 'Upload' to this import line ---
 import { Form, Input, Select, Button, message, Card, Typography, Spin, Upload } from 'antd';
-// --- And 'UploadOutlined' from icons ---
 import { UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -10,16 +9,15 @@ const { Option } = Select;
 const { Title } = Typography;
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const EXPECTED_TEAM_SIZE = 6;
+const EXPECTED_TEAM_SIZE = 7;
 
 const TeamForm = ({ onTeamCreated }) => {
     const [form] = Form.useForm();
     const [allPlayers, setAllPlayers] = useState([]);
     const [loadingPlayers, setLoadingPlayers] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [logoFileList, setLogoFileList] = useState([]); // State to hold logo file
+    const [logoFileList, setLogoFileList] = useState([]);
 
-    // Fetch all players for selection
     useEffect(() => {
         setLoadingPlayers(true);
         const fetchPlayers = async () => {
@@ -46,14 +44,12 @@ const TeamForm = ({ onTeamCreated }) => {
             return;
         }
 
-        // Use FormData to send both files and text fields
         const formData = new FormData();
         formData.append('name', values.name);
         (values.playerIds || []).forEach(playerId => {
             formData.append('playerIds', playerId);
         });
 
-        // Append the logo file if one was selected
         if (logoFileList.length > 0 && logoFileList[0].originFileObj) {
             formData.append('teamLogo', logoFileList[0].originFileObj);
         }
@@ -64,7 +60,7 @@ const TeamForm = ({ onTeamCreated }) => {
             });
             message.success(`Team '${response.data.name}' created successfully!`);
             form.resetFields();
-            setLogoFileList([]); // Clear logo file state
+            setLogoFileList([]);
             if (onTeamCreated) {
                 onTeamCreated(response.data);
             }
@@ -78,7 +74,7 @@ const TeamForm = ({ onTeamCreated }) => {
 
     // Handlers for logo upload component
     const handleLogoUploadChange = ({ fileList: newFileList }) => {
-        setLogoFileList(newFileList.slice(-1)); // Keep only the last file
+        setLogoFileList(newFileList.slice(-1));
     };
 
     const beforeLogoUpload = (file) => {
@@ -86,7 +82,6 @@ const TeamForm = ({ onTeamCreated }) => {
         if (!isJpgOrPng) { message.error('You can only upload JPG/PNG/GIF file!'); }
         const isLt1M = file.size / 1024 / 1024 < 1;
         if (!isLt1M) { message.error('Image must be smaller than 1MB!'); }
-        // Prevent auto-upload
         return false;
     };
 
@@ -102,9 +97,7 @@ const TeamForm = ({ onTeamCreated }) => {
                     <Input placeholder="Enter team name" />
                 </Form.Item>
 
-                {/* Team Logo Upload Field */}
                 <Form.Item label="Team Logo (Optional)">
-                    {/* The '<Upload>' component that was causing the error */}
                     <Upload
                         listType="picture-card"
                         fileList={logoFileList}
