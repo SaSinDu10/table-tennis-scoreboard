@@ -358,7 +358,6 @@ router.put('/:id/score', async (req, res) => {
 
                 if (matchWinnerNum) {
                     match.status = 'Finished'; match.endTime = new Date();
-                    // --- THE FINAL FIX IS HERE ---
                     if (match.matchType === 'Individual') {
                         match.winner = (matchWinnerNum === 1) ? match.player1 : match.player2;
                     } else { // Dual or Team

@@ -28,8 +28,6 @@ function App() {
     const [loadingPlayers, setLoadingPlayers] = useState(true);
     const [errorPlayers, setErrorPlayers] = useState(null);
     const [matchListVersion, setMatchListVersion] = useState(0);
-    // ------------------------------------------------
-
     const [teams, setTeams] = useState([]);
     const [loadingTeams, setLoadingTeams] = useState(true);
     const [errorTeams, setErrorTeams] = useState(null);
@@ -89,7 +87,6 @@ function App() {
         }
     }, []);
     useEffect(() => { if (location.pathname === '/teams') fetchTeams(); }, [fetchTeams, location.pathname]);
-    // -----------------
 
     const handlePlayerAdded = (newPlayer) => {
         setPlayers(prevPlayers =>
@@ -102,19 +99,18 @@ function App() {
     const handleMatchCreated = (newMatch) => {
         console.log("App detected match created:", newMatch);
         message.success(`Match created successfully!`);
-        // --- Increment version state to trigger MatchList remount/refresh ---
         setMatchListVersion(prevVersion => prevVersion + 1);
     };
 
-    const handleTeamCreated = (newTeam) => { // Add to list and re-sort
+    const handleTeamCreated = (newTeam) => {
         setTeams(prevTeams => [...prevTeams, newTeam].sort((a, b) => a.name.localeCompare(b.name)));
         console.log("App detected team created:", newTeam);
     };
 
-    const handleTeamMatchCreated = (newMatch) => { // Specific handler for team matches
+    const handleTeamMatchCreated = (newMatch) => {
         console.log("App detected TEAM match created:", newMatch);
         message.success(`Team Match created successfully!`);
-        setMatchListVersion(prevVersion => prevVersion + 1); // Refresh lists on the team page too
+        setMatchListVersion(prevVersion => prevVersion + 1);
     };
 
     // Determine selected menu key based on route
@@ -165,9 +161,9 @@ function App() {
                 {/* Main Content Area */}
                 <Content style={{ margin: '24px 16px 0', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
                     <div style={{
-                        padding: isScoreboardRoute ? '0 16px' : 24, // Add some horizontal padding for scoreboard
+                        padding: isScoreboardRoute ? '0 16px' : 24,
                         background: '#fff',
-                        flex: '1 0 auto' // Allow content to grow but not shrink below content size
+                        flex: '1 0 auto'
                     }}>
                         <div style={{
                             padding: isScoreboardRoute ? 0 : 24,
@@ -213,11 +209,11 @@ function App() {
                                 }
                             />
                             <Route
-                                path="/team-matches" // Landing page for team matches
+                                path="/team-matches"
                                 element={<TeamMatchesLanding />}
                             />
                             <Route
-                                path="/team-matches/setup-set" // Page to setup a "Set" type team match
+                                path="/team-matches/setup-set"
                                 element={
                                     <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
                                         <TeamSetMatchSetup onTeamMatchCreated={handleTeamMatchCreated} />

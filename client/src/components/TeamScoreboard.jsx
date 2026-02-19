@@ -196,7 +196,7 @@ const TeamScoreboard = () => {
         setIsUndoing(true);
         try {
             const response = await axios.put(`${API_URL}/api/matches/${matchId}/undo`);
-            setMatchData(response.data); // Update state with reverted data
+            setMatchData(response.data);
             message.success('Last point undone.');
         } catch (error) {
             console.error("Error undoing point:", error.response?.data || error.message);
@@ -205,8 +205,6 @@ const TeamScoreboard = () => {
             setIsUndoing(false);
         }
     };
-    // ---------------------------------------------------------
-
 
 
     // --- Loading, Error, and No Data Render States ---
@@ -342,14 +340,13 @@ const TeamScoreboard = () => {
             const legTargetScore = (matchData.setPointTarget || 10) * currentLegNumber;
             const finalTargetScore = (matchData.setPointTarget || 10) * (matchData.numberOfSets || 1);
 
-            // --- FIX: DEFINE THE PLAYING PAIR VARIABLES HERE ---
+            // --- DEFINE THE PLAYING PAIR VARIABLES HERE ---
             const team1PlayingPair = (currentLeg.team1Players || []).map(pId =>
                 matchData.team1?.players.find(p => p._id === (pId._id || pId))
             ).filter(Boolean);
             const team2PlayingPair = (currentLeg.team2Players || []).map(pId =>
                 matchData.team2?.players.find(p => p._id === (pId._id || pId))
             ).filter(Boolean);
-            // ----------------------------------------------------
 
             return (
                 <Card title={<Title level={4}>Live Relay Scoring - Leg {currentLegNumber}</Title>} style={{ marginTop: 20 }}>

@@ -1,67 +1,56 @@
 // server/routes/players.js
 const express = require('express');
 const router = express.Router();
-const Player = require('../models/Player'); // Ensure path is correct
-const upload = require('../middleware/upload'); // Ensure path is correct
-const fs = require('fs'); // Import fs for potential file deletion on error
-const path = require('path'); // Import path
+const Player = require('../models/Player');
+const upload = require('../middleware/upload');
+const fs = require('fs');
+const path = require('path');
 
-// --- GET all players (Sorted Alphabetically by Name) ---
+// --- GET all players ---
 router.get('/', async (req, res) => {
     console.log('--- GET /api/players ROUTE HIT ---');
     try {
-        // Find all players and sort alphabetically by name (ascending)
-        const players = await Player.find().sort({ name: 1 }); // Use sort({ name: 1 })
+        const players = await Player.find().sort({ name: 1 });
         console.log(`Found ${players.length} players.`);
-        res.json(players); // Send the sorted players array
+        res.json(players);
     } catch (err) {
         console.error("!!! ERROR in GET /api/players:", err);
         res.status(500).json({ message: 'Server Error fetching players' });
     }
 });
-// ---------------------------------------------
 
 // --- POST create a new player (Handles file upload) ---
 router.post('/', (req, res) => {
     console.log('--- POST /api/players ROUTE HIT ---');
-    // Use the upload middleware configured in middleware/upload.js
-    // It expects the file in a field named 'playerImage'
     upload(req, res, async (err) => {
-        // --- Handle Multer Errors ---
         if (err) {
             console.error("Multer Error:", err);
-            // Provide specific Multer error codes if possible
             if (err instanceof multer.MulterError) {
-                // e.g., err.code === 'LIMIT_FILE_SIZE'
                 return res.status(400).json({ message: `File upload error: ${err.code}` });
             } else {
-                // Handle non-Multer errors from fileFilter (e.g., "Images Only!")
                 return res.status(400).json({ message: err.message || err });
             }
         }
-        // --- End Handle Multer Errors ---
 
-        console.log('Multer processed file (if any). Req file:', req.file);
-        console.log('Request Body:', req.body);
+        // console.log('Multer processed file (if any). Req file:', req.file);
+        // console.log('Request Body:', req.body);
         const { name, category } = req.body;
 
         // --- Validate Text Fields ---
         if (!name || !category) {
-            console.warn("Validation failed: Name or category missing.");
-            // If a file was uploaded but validation failed, delete the uploaded file
+            // console.warn("Validation failed: Name or category missing.");
             if (req.file) {
-                console.log(`Deleting orphaned file: ${req.file.path}`);
+                // console.log(`Deleting orphaned file: ${req.file.path}`);
                 fs.unlink(req.file.path, (unlinkErr) => {
                     if (unlinkErr) console.error("Error deleting orphaned file:", unlinkErr);
                 });
             }
             return res.status(400).json({ message: 'Player name and category are required.' });
         }
-        // --------------------------
 
         // Construct photoUrl if file was uploaded
         const photoUrl = req.file ? `/uploads/players/${req.file.filename}` : null;
-        console.log(`Photo URL determined: ${photoUrl}`);
+        // console.log(`Photo URL determined: ${photoUrl}`);
 
         // Create new Player document
         const newPlayer = new Player({
@@ -74,11 +63,10 @@ router.post('/', (req, res) => {
         try {
             console.log('Attempting to save new player...');
             const savedPlayer = await newPlayer.save();
-            console.log(`Player saved successfully: ${savedPlayer._id}`);
-            res.status(201).json(savedPlayer); // Respond with created player data
+            // console.log(`Player saved successfully: ${savedPlayer._id}`);
+            res.status(201).json(savedPlayer);
         } catch (dbErr) {
             console.error("!!! Database Error saving player:", dbErr);
-            // If DB save fails, delete the uploaded file to prevent orphans
             if (req.file) {
                 console.log(`DB save failed. Deleting orphaned file: ${req.file.path}`);
                 fs.unlink(req.file.path, (unlinkErr) => {
@@ -86,8 +74,8 @@ router.post('/', (req, res) => {
                 });
             }
 
-            // Handle specific DB errors (e.g., duplicate name)
-            if (dbErr.code === 11000) { // MongoDB duplicate key error
+            // Handle specific DB errors
+            if (dbErr.code === 11000) { 
                 return res.status(400).json({ message: `Player name '${name}' already exists.` });
             }
             if (dbErr.name === 'ValidationError') {
@@ -96,12 +84,10 @@ router.post('/', (req, res) => {
             // Generic server error for other DB issues
             res.status(500).json({ message: 'Server error saving player', error: dbErr.message });
         }
-        // --------------------
     });
 });
-// ------------------------------------------
 
-// --- Placeholder for other routes (implement later if needed) ---
+// --- Placeholder for other routes ---
 // GET /api/players/:id
 router.get('/:id', async (req, res) => {
     console.log(`--- GET /api/players/${req.params.id} ROUTE HIT ---`);
@@ -118,13 +104,13 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// PUT /api/players/:id (Example - update requires more logic)
+// PUT /api/players/:id
 router.put('/:id', (req, res) => {
     console.log(`--- PUT /api/players/${req.params.id} ROUTE HIT ---`);
-    res.status(501).json({ message: 'Player update not implemented yet.' }); // 501 Not Implemented
+    res.status(501).json({ message: 'Player update not implemented yet.' });
 });
 
-// DELETE /api/players/:id (Example - requires caution: handle related matches?)
+// DELETE /api/players/:id 
 router.delete('/:id', async (req, res) => {
     console.log(`--- DELETE /api/players/${req.params.id} ROUTE HIT ---`);
     try {
@@ -140,10 +126,10 @@ router.delete('/:id', async (req, res) => {
 
         // Delete photo file if it exists
         if (player.photoUrl) {
-            const filePath = path.join(__dirname, '..', player.photoUrl); // Construct absolute path
+            const filePath = path.join(__dirname, '..', player.photoUrl);
             console.log(`Attempting to delete photo file: ${filePath}`);
             fs.unlink(filePath, (unlinkErr) => {
-                if (unlinkErr && unlinkErr.code !== 'ENOENT') { // Ignore 'file not found' errors
+                if (unlinkErr && unlinkErr.code !== 'ENOENT') {
                     console.error("Error deleting player photo:", unlinkErr);
                 } else if (!unlinkErr) {
                     console.log(`Deleted photo file: ${filePath}`);
@@ -160,6 +146,5 @@ router.delete('/:id', async (req, res) => {
         res.status(500).json({ message: 'Server Error deleting player', error: err.message });
     }
 });
-// -----------------------------------------------------------------
 
 module.exports = router;
