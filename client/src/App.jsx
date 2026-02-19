@@ -95,7 +95,7 @@ function App() {
         console.log("App detected player added:", newPlayer);
     };
 
-    // --- UPDATED Callback for MatchSetupForm ---
+
     const handleMatchCreated = (newMatch) => {
         console.log("App detected match created:", newMatch);
         message.success(`Match created successfully!`);

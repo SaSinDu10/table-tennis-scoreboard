@@ -39,10 +39,10 @@ router.post('/', (req, res) => {
         console.log('Request Body:', req.body);
         const { name, category } = req.body;
 
-        // Validate Text Fields
+
         if (!name || !category) {
             console.warn("Validation failed: Name or category missing.");
-            if (req.file) { // Clean up orphaned file
+            if (req.file) {
                 fs.unlink(req.file.path, (unlinkErr) => {
                     if (unlinkErr) console.error("Error deleting orphaned file:", unlinkErr);
                 });
@@ -64,12 +64,12 @@ router.post('/', (req, res) => {
             res.status(201).json(savedPlayer);
         } catch (dbErr) {
             console.error("!!! Database Error saving player:", dbErr);
-            if (req.file) { // Clean up orphaned file on DB error
+            if (req.file) {
                 fs.unlink(req.file.path, (unlinkErr) => {
                     if (unlinkErr) console.error("Error deleting orphaned file after DB error:", unlinkErr);
                 });
             }
-            if (dbErr.code === 11000) { // Duplicate name error
+            if (dbErr.code === 11000) {
                 return res.status(400).json({ message: `Player name '${name}' already exists.` });
             }
             res.status(500).json({ message: 'Server error saving player', error: dbErr.message });

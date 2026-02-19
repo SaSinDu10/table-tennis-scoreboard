@@ -42,13 +42,12 @@ const TeamRelayMatchSetup = ({ onTeamMatchCreated }) => {
         }
 
         const payload = {
-            // category: values.category, // <<< REMOVED
             matchType: 'Team',
             teamMatchSubType: 'Relay',
             teamMatchEncounterFormat: values.encounterFormat,
             team1Id: values.team1Id,
             team2Id: values.team2Id,
-            numberOfSets: values.numberOfLegs, // Re-use numberOfSets for number of legs
+            numberOfSets: values.numberOfLegs,
             setPointTarget: values.pointsPerLeg,
         };
 
@@ -92,7 +91,6 @@ const TeamRelayMatchSetup = ({ onTeamMatchCreated }) => {
                         optionFilterProp="children"
                         loading={loadingTeams}
                         onChange={() => {
-                            // Reset Team 2 if the new Team 1 is the same as the old Team 2
                             const team1Value = form.getFieldValue('team1Id');
                             const team2Value = form.getFieldValue('team2Id');
                             if (team1Value && team1Value === team2Value) {
@@ -104,7 +102,6 @@ const TeamRelayMatchSetup = ({ onTeamMatchCreated }) => {
                     </Select>
                 </Form.Item>
 
-                {/* --- FIX: WRAP TEAM 2 SELECT IN Form.Item shouldUpdate --- */}
                 <Form.Item
                     noStyle
                     shouldUpdate={(prevValues, currentValues) => prevValues.team1Id !== currentValues.team1Id}
@@ -129,7 +126,6 @@ const TeamRelayMatchSetup = ({ onTeamMatchCreated }) => {
                         </Form.Item>
                     )}
                 </Form.Item>
-                {/* -------------------------------------------------------- */}
 
                 <Form.Item name="encounterFormat" label="Encounter Format (for each leg)" rules={[{ required: true }]}>
                     <Radio.Group>

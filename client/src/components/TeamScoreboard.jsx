@@ -449,10 +449,12 @@ const TeamScoreboard = () => {
             {isLive && renderLiveScoreboard()}
             {isFinished && renderFinishedMatch()}
 
+            {/* 
             <Divider>Debug: Raw Match Data</Divider>
             <pre style={{ fontSize: '0.8em', background: '#f5f5f5', padding: '10px', borderRadius: '4px', marginTop: 20, maxHeight: 300, overflowY: 'auto' }}>
                 {JSON.stringify(matchData, null, 2)}
             </pre>
+            */}
         </Card>
     );
 };

@@ -21,10 +21,10 @@ const teamSchema = new Schema({
     // Add a tournamentId or leagueId if teams are specific to events later
 }, { timestamps: true });
 
-// Optional: Validate player array length (e.g., must be 6)
+// Optional: Validate player array length
 teamSchema.path('players').validate(function (value) {
-    // return value.length === 6; // Example: Enforce exactly 6 players
-    return value.length > 0 && value.length <= 10; // Example: Between 1 and 10 players
+    // return value.length === 6;
+    return value.length > 0 && value.length <= 10;
 }, 'Team must have the specified number of players (e.g., between 1 and 10).');
 
 

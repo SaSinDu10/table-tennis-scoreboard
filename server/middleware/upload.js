@@ -2,30 +2,24 @@
 const multer = require('multer');
 const path = require('path');
 
-// --- Reusable Helper Function to Check File Type ---
-// We only need ONE of these.
+
 function checkImageType(file, cb) {
-    // Allowed extensions
     const filetypes = /jpeg|jpg|png|gif/;
-    // Check extension
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    // Check mime type
     const mimetype = filetypes.test(file.mimetype);
 
     if (mimetype && extname) {
-        return cb(null, true); // Success
+        return cb(null, true);
     } else {
-        cb(new Error('Error: Images Only! (jpeg, jpg, png, gif)')); // Pass an actual Error object
+        cb(new Error('Error: Images Only! (jpeg, jpg, png, gif)'));
     }
 }
-// ---------------------------------------------------
 
 
 // --- Multer Storage Engine for PLAYER Photos ---
 const playerPhotoStorage = multer.diskStorage({
-    destination: './uploads/players/', // Folder for player photos
+    destination: './uploads/players/',
     filename: function(req, file, cb) {
-        // Generate unique filename
         cb(null, 'playerImage-' + Date.now() + path.extname(file.originalname));
     }
 });
@@ -33,19 +27,17 @@ const playerPhotoStorage = multer.diskStorage({
 // --- Middleware for PLAYER Photo Upload ---
 const uploadPlayerImage = multer({
     storage: playerPhotoStorage,
-    limits: { fileSize: 1000000 }, // 1MB limit
+    limits: { fileSize: 1000000 },
     fileFilter: function(req, file, cb) {
-        checkImageType(file, cb); // Use the reusable helper
+        checkImageType(file, cb);
     }
-}).single('playerImage'); // Expects the file on a form field named 'playerImage'
-// ------------------------------------------
+}).single('playerImage'); 
 
 
 // --- Multer Storage Engine for TEAM Logos ---
 const teamLogoStorage = multer.diskStorage({
-    destination: './uploads/teams/', // Separate folder for team logos
+    destination: './uploads/teams/',
     filename: function(req, file, cb) {
-        // Generate unique filename
         cb(null, 'teamLogo-' + Date.now() + path.extname(file.originalname));
     }
 });
@@ -53,9 +45,9 @@ const teamLogoStorage = multer.diskStorage({
 // --- Middleware for TEAM Logo Upload ---
 const uploadTeamLogo = multer({
     storage: teamLogoStorage,
-    limits: { fileSize: 1000000 }, // 1MB limit
+    limits: { fileSize: 1000000 },
     fileFilter: function(req, file, cb) {
-        checkImageType(file, cb); // Use the reusable helper
+        checkImageType(file, cb);
     }
 }).single('teamLogo');
 

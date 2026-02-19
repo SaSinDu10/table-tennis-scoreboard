@@ -7,19 +7,15 @@ const { uploadTeamLogo } = require('../middleware/upload');
 
 // POST /api/teams - Create a new team
 router.post('/', (req, res) => {
-    // Use the upload middleware first
     uploadTeamLogo(req, res, async (err) => {
         if (err) {
             console.error("Team Logo Multer Error:", err);
             return res.status(400).json({ message: err.message || "File upload error" });
         }
 
-        // 'req.file' contains the logo info, 'req.body' contains text fields
         console.log('--- POST /api/teams ROUTE HIT ---');
         console.log('Request Body:', req.body);
 
-        // Player IDs might come as a single string if only one is selected,
-        // or an array. Always convert to array.
         let playerIds = req.body.playerIds;
         if (playerIds && !Array.isArray(playerIds)) {
             playerIds = [playerIds];
@@ -35,23 +31,20 @@ router.post('/', (req, res) => {
             const newTeam = new Team({
                 name,
                 players: playerIds,
-                // --- Add the logoUrl from the uploaded file ---
                 logoUrl: req.file ? `/uploads/teams/${req.file.filename}` : null
-                // ---------------------------------------------
             });
 
             const savedTeam = await newTeam.save();
-            // Populate players for the response
             await savedTeam.populate({
                 path: 'players',
-                select: 'name photoUrl category' // Select fields you want from Player
+                select: 'name photoUrl category'
             });
             console.log(`Team '${savedTeam.name}' created successfully.`);
             res.status(201).json(savedTeam);
 
         } catch (err) {
             console.error("!!! ERROR in POST /api/teams:", err);
-            if (err.code === 11000) { // Duplicate key error for team name
+            if (err.code === 11000) {
                 return res.status(400).json({ message: `Team name '${name}' already exists.` });
             }
             if (err.name === 'ValidationError') {
@@ -81,7 +74,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/teams/:id (Optional - For editing/viewing single team)
+// GET /api/teams/:id 
 router.get('/:id', async (req, res) => {
     // Implement if needed
     res.status(501).json({ message: 'Not Implemented Yet' });
