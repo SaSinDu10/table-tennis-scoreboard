@@ -3,24 +3,21 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Typography, Spin, Alert, Card, Row, Col, Button, Select,
-    Divider, List, Tag, message, Avatar, Space, Tooltip, Form, Radio, Statistic, Result
+    Divider, List, Tag, message, Avatar, Space, Tooltip, Form, Radio, Statistic,Result
 } from 'antd';
-import { ArrowLeftOutlined, UserOutlined, PlusOutlined, UndoOutlined, TrophyOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, UserOutlined, PlusOutlined, UndoOutlined, TrophyOutlined  } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// Helper function to get displayable player/team names
 const getTeamName = (match, teamNumber) => {
     if (!match) return 'N/A';
     const teamData = teamNumber === 1 ? match.team1 : match.team2;
     return teamData?.name || `Team ${teamNumber}`;
 };
 
-
-// This function now renders the avatars for a specific pair of players ---
 const renderCurrentPairAvatars = (players, isServing) => {
     const avatarSize = 80;
     const avatarContent = (player) => {
@@ -32,16 +29,14 @@ const renderCurrentPairAvatars = (players, isServing) => {
             </Avatar>
         );
     };
-
     let avatarComponent;
     if (!players || players.length === 0) {
         avatarComponent = <Avatar size={avatarSize} icon={<UserOutlined />} />;
-    } else if (players.length === 1) { // Singles/Individual
+    } else if (players.length === 1) {
         avatarComponent = avatarContent(players[0]);
-    } else { // Doubles/Dual
+    } else {
         avatarComponent = <Avatar.Group max={{ count: 2 }} size={avatarSize}>{players.map(p => avatarContent(p))}</Avatar.Group>;
     }
-
     if (isServing) {
         return (
             <Tooltip title="Serving">
@@ -55,6 +50,7 @@ const renderCurrentPairAvatars = (players, isServing) => {
 };
 
 
+
 const TeamScoreboard = () => {
     const { id: matchId } = useParams();
     const navigate = useNavigate();
@@ -62,30 +58,26 @@ const TeamScoreboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [formError, setFormError] = useState(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false); 
     const [isUpdatingScore, setIsUpdatingScore] = useState(false);
     const [isUndoing, setIsUndoing] = useState(false);
     const [pairSelectionForm] = Form.useForm();
 
-    // Fetch match data
     useEffect(() => {
         if (!matchId) return;
         let isMounted = true;
         const fetchMatch = async () => {
-            console.log(`Fetching match ${matchId}`);
             setLoading(true); setError(null); setFormError(null);
             try {
                 const response = await axios.get(`${API_URL}/api/matches/${matchId}`);
                 if (isMounted) {
                     setMatchData(response.data);
-                    console.log("Match data fetched:", response.data);
                     const status = response.data?.status;
                     if (status === 'Upcoming' || status === 'AwaitingSubMatchSetup') {
                         pairSelectionForm.setFieldsValue({ initialServer: 1 });
                     }
                 }
             } catch (err) {
-                console.error("Error fetching match data:", err);
                 if (isMounted) { setError("Failed to load match data."); }
             } finally {
                 if (isMounted) { setLoading(false); }
@@ -103,35 +95,17 @@ const TeamScoreboard = () => {
         encounterSize,
         playerSetCounts
     } = useMemo(() => {
-        // Start with empty defaults
         const defaults = { nextEncounterIndex: 0, availableTeam1Players: [], availableTeam2Players: [], encounterSize: 1, playerSetCounts: new Map() };
-
-        // --- FIX: More robust check to ensure all necessary data exists before proceeding ---
-        if (!matchData || !matchData.team1 || !matchData.team2 || !matchData.team1.players || !matchData.team2.players) {
-            console.log("useMemo: Exiting because matchData or nested team player data is not ready.", matchData);
-            // Determine encounter size from matchData even if players aren't populated yet
+        if (!matchData?.team1?.players || !matchData?.team2?.players) {
             const encSize = matchData?.teamMatchEncounterFormat === 'Individual' ? 1 : 2;
             return { ...defaults, encounterSize: encSize };
         }
-        // ----------------------------------------------------------------------------------
-
-        console.log("--- useMemo: Recalculating ---");
-        console.log("Full Team 1 Players:", matchData.team1.players);
-        console.log("Full Team 2 Players:", matchData.team2.players);
-
-        // Determine which array to check for finished encounters
-        const finishedEncounters = (matchData.teamMatchSubType === 'Relay'
-            ? (matchData.score?.relayLegs || [])
-            : (matchData.score?.setDetails || [])
-        ).filter(s => s.status === 'Finished');
-
+        const finishedEncounters = (matchData.teamMatchSubType === 'Relay' ? (matchData.score?.relayLegs || []) : (matchData.score?.setDetails || [])).filter(s => s.status === 'Finished');
         const nextIdx = finishedEncounters.length;
         const encSize = matchData.teamMatchEncounterFormat === 'Individual' ? 1 : 2;
-
         const pSetCounts = new Map();
         const rule = matchData.teamMatchSubType === 'Relay' ? 'playOnce' : 'playMaxSets';
         const maxSets = matchData.maxSetsPerPlayer || 2;
-
         finishedEncounters.forEach(detail => {
             const processPair = (pair) => (pair || []).forEach(p => {
                 const pId = p?._id?.toString() || p?.toString();
@@ -140,27 +114,16 @@ const TeamScoreboard = () => {
             processPair(detail.team1Players || detail.team1Pair);
             processPair(detail.team2Players || detail.team2Pair);
         });
-        console.log("Player Set Counts:", Object.fromEntries(pSetCounts)); // Log the calculated counts
-
         const filterAvailable = (teamPlayers) => (teamPlayers || []).filter(player => {
             if (!player?._id) return false;
             const playedCount = pSetCounts.get(player._id.toString()) || 0;
-            if (rule === 'playOnce') {
-                return playedCount < 1;
-            }
+            if (rule === 'playOnce') return playedCount < 1;
             return playedCount < maxSets;
         });
-
-        const availableT1 = filterAvailable(matchData.team1.players);
-        const availableT2 = filterAvailable(matchData.team2.players);
-
-        console.log("Available Team 1 Players:", availableT1.map(p => p.name));
-        console.log("Available Team 2 Players:", availableT2.map(p => p.name));
-
         return {
             nextEncounterIndex: nextIdx,
-            availableTeam1Players: availableT1,
-            availableTeam2Players: availableT2,
+            availableTeam1Players: filterAvailable(matchData.team1.players),
+            availableTeam2Players: filterAvailable(matchData.team2.players),
             encounterSize: encSize,
             playerSetCounts: pSetCounts
         };
@@ -172,27 +135,19 @@ const TeamScoreboard = () => {
     const handleSetupEncounter = async (values) => {
         setIsSubmitting(true);
         setFormError(null);
-
         const team1PairIds = Array.isArray(values.team1Players) ? values.team1Players : [values.team1Players].filter(Boolean);
         const team2PairIds = Array.isArray(values.team2Players) ? values.team2Players : [values.team2Players].filter(Boolean);
-
         if (team1PairIds.length !== encounterSize || team2PairIds.length !== encounterSize || !values.initialServer) {
             message.error("Please ensure all fields are selected correctly.");
             setIsSubmitting(false); return;
         }
-
         const endpoint = matchData.teamMatchSubType === 'Relay' ? 'setup_relay_leg' : 'setup_set';
-
         const payload = {
             setIndex: nextEncounterIndex,
-            team1PairIds: team1PairIds,
-            team2PairIds: team2PairIds,
+            team1PairIds, team2PairIds,
             initialServer: values.initialServer
         };
         console.log(`Submitting to /${endpoint} with payload:`, payload);
-
-        // TODO: Add client-side partner rule validation for 'Set' matches if needed
-
         try {
             const response = await axios.put(`${API_URL}/api/matches/${matchId}/${endpoint}`, payload);
             setMatchData(response.data);
@@ -206,6 +161,7 @@ const TeamScoreboard = () => {
             setIsSubmitting(false);
         }
     };
+
 
     // --- Live Scoring and Undo Handlers ---
     const handleScoreUpdate = async (scoringTeam) => {
@@ -269,7 +225,6 @@ const TeamScoreboard = () => {
         const encounterLabel = teamMatchSubType === 'Relay' ? 'Leg' : 'Set';
         const nextEncounterNumber = nextEncounterIndex + 1;
         const formTitle = status === 'AwaitingTiebreakerPairs' ? 'Select Pairs for Tiebreaker' : `Select Players for ${encounterLabel} ${nextEncounterNumber}`;
-
         const getPlayerLabel = (player) => {
             if (!player?._id) return '';
             if (teamMatchSubType === 'Relay') return player.name;
@@ -278,32 +233,21 @@ const TeamScoreboard = () => {
             const remaining = maxSets - playedCount;
             return `${player.name} (${remaining} set${remaining !== 1 ? 's' : ''} left)`;
         };
-
         return (
             <Card title={<Title level={4}>{formTitle}</Title>} style={{ marginTop: 20 }}>
-                {formError && <Alert message={`Error Starting ${encounterLabel}`} description={formError} type="error" showIcon closable onClose={() => setFormError(null)} style={{ marginBottom: 16 }} />}
+                {formError && <Alert message={`Error Starting ${encounterLabel}`} description={formError} type="error" showIcon closable onClose={()=>setFormError(null)} style={{marginBottom:16}}/>}
                 <Form form={pairSelectionForm} layout="vertical" onFinish={handleSetupEncounter} onFinishFailed={(err) => console.log('Validation Failed:', err)}>
                     <Row gutter={24}>
                         <Col xs={24} md={12}>
                             <Title level={5}>{getTeamName(matchData, 1)}</Title>
                             <Form.Item name="team1Players" label={`Select ${encounterSize} Player(s)`} rules={[{ required: true, message: `Please select player(s).` }]}>
-                                <Select
-                                    mode={encounterSize > 1 ? "multiple" : undefined}
-                                    placeholder={`Select player${encounterSize > 1 ? 's' : ''}`}
-                                    allowClear
-                                    options={(availableTeam1Players).map(p => ({ value: p._id, label: getPlayerLabel(p) }))}
-                                />
+                                <Select mode={encounterSize > 1 ? "multiple" : undefined} placeholder={`Select player${encounterSize > 1 ? 's' : ''}`} allowClear options={(availableTeam1Players).map(p => ({ value: p._id, label: getPlayerLabel(p) }))} />
                             </Form.Item>
                         </Col>
                         <Col xs={24} md={12}>
                             <Title level={5}>{getTeamName(matchData, 2)}</Title>
                             <Form.Item name="team2Players" label={`Select ${encounterSize} Player(s)`} rules={[{ required: true, message: `Please select player(s).` }]}>
-                                <Select
-                                    mode={encounterSize > 1 ? "multiple" : undefined}
-                                    placeholder={`Select player${encounterSize > 1 ? 's' : ''}`}
-                                    allowClear
-                                    options={(availableTeam2Players).map(p => ({ value: p._id, label: getPlayerLabel(p) }))}
-                                />
+                                <Select mode={encounterSize > 1 ? "multiple" : undefined} placeholder={`Select player${encounterSize > 1 ? 's' : ''}`} allowClear options={(availableTeam2Players).map(p => ({ value: p._id, label: getPlayerLabel(p) }))} />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -322,25 +266,14 @@ const TeamScoreboard = () => {
     // --- UI for Live Scoring (Router) ---
     const renderLiveScoreboard = () => {
         // --- 'Set' Match Live UI ---
-        if (matchData.teamMatchSubType === 'Set') {
+        if (teamMatchSubType === 'Set') {
             const currentLiveSetDetail = matchData.score?.setDetails?.find(s => s.status === 'Live');
-            if (!currentLiveSetDetail) {
-                return <Alert message="Waiting for next set setup..." type="info" showIcon />;
-            }
-
-            const currentSetNumberForDisplay = nextEncounterIndex + 1;
-
-            // Find the full player objects for the current pair
-            const team1PlayingPair = (currentLiveSetDetail.team1Pair || []).map(pIdObj =>
-                matchData.team1?.players.find(p => p._id === (pIdObj._id || pIdObj))
-            ).filter(Boolean);
-            const team2PlayingPair = (currentLiveSetDetail.team2Pair || []).map(pIdObj =>
-                matchData.team2?.players.find(p => p._id === (pIdObj._id || pIdObj))
-            ).filter(Boolean);
-
+            if (!currentLiveSetDetail) return <Alert message="Waiting for next set setup..." type="info" showIcon />;
+            const currentSetNumberForDisplay = (matchData.score?.setDetails?.filter(s => s.status === 'Finished').length || 0) + 1;
+            const team1PlayingPair = (currentLiveSetDetail.team1Pair || []).map(pIdObj => matchData.team1?.players.find(p => p._id === (pIdObj._id || pIdObj))).filter(Boolean);
+            const team2PlayingPair = (currentLiveSetDetail.team2Pair || []).map(pIdObj => matchData.team2?.players.find(p => p._id === (pIdObj._id || pIdObj))).filter(Boolean);
             const team1PlayingNames = team1PlayingPair.map(p => p.name).join(' & ');
             const team2PlayingNames = team2PlayingPair.map(p => p.name).join(' & ');
-
             return (
                 <Card title={<Title level={4} style={{ textAlign: 'center' }}>Live Scoring</Title>} style={{ marginTop: 20 }}>
                     <Title level={5} style={{ textAlign: 'center' }}>Set {currentSetNumberForDisplay}: {team1PlayingNames} vs {team2PlayingNames}</Title>
@@ -476,17 +409,15 @@ const TeamScoreboard = () => {
                 title={<Title level={2} style={{ color: '#52c41a' }}>Congratulations, {winnerName}!</Title>}
                 subTitle="You have won the match."
                 extra={[
-                    // Display final score
                     <Title level={4} key="final-score">
                         {matchData.teamMatchSubType === 'Set'
                             ? `Final Set Score: ${matchData.score?.currentSetScore?.team1 ?? 0} - ${matchData.score?.currentSetScore?.team2 ?? 0}`
                             : `Final Score: ${matchData.score?.overallScore?.team1 ?? 0} - ${matchData.score?.overallScore?.team2 ?? 0}`
                         }
                     </Title>,
-                    // Display winner's logo
                     <Avatar
                         key="winner-logo"
-                        size={128} // Large logo
+                        size={128} 
                         src={winnerLogoUrl}
                         icon={!winnerLogoUrl ? <UserOutlined /> : null}
                         style={{ marginTop: 24, border: '4px solid #f6ffed' }}
@@ -494,7 +425,7 @@ const TeamScoreboard = () => {
                     
                 ]}
                 style={{
-                    padding: '48px 0' // Add padding for better look
+                    padding: '48px 0'
                 }}
             />
             
@@ -521,7 +452,10 @@ const TeamScoreboard = () => {
             {isLive && renderLiveScoreboard()}
             {isFinished && renderFinishedMatch()}
 
-            
+            <Divider>Debug: Raw Match Data</Divider>
+            <pre style={{ fontSize: '0.8em', background: '#f5f5f5', padding: '10px', borderRadius: '4px', marginTop: 20, maxHeight: 300, overflowY: 'auto' }}>
+                {JSON.stringify(matchData, null, 2)}
+            </pre>
         </Card>
     );
 };

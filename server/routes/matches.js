@@ -360,9 +360,9 @@ router.put('/:id/score', async (req, res) => {
                     match.status = 'Finished'; match.endTime = new Date();
                     // --- THE FINAL FIX IS HERE ---
                     if (match.matchType === 'Individual') {
-                        match.winner = (matchWinnerNum === 1) ? match.player1 : match.player2; // Assign ObjectId
+                        match.winner = (matchWinnerNum === 1) ? match.player1 : match.player2;
                     } else { // Dual or Team
-                        match.winner = matchWinnerNum; // Assign team number
+                        match.winner = matchWinnerNum;
                     }
                 } else if (match.matchType === 'Team') {
                     const totalSetsPlayed = match.score.setDetails.filter(s => s.status === 'Finished').length;
