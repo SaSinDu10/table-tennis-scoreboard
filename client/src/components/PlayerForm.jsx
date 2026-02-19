@@ -1,6 +1,6 @@
 // src/components/PlayerForm.jsx
 import React, { useState } from 'react';
-import { Form, Input, Select, Button, Upload, message, Typography, Card } from 'antd'; // Ensure Card is imported
+import { Form, Input, Select, Button, Upload, message, Typography, Card } from 'antd'; 
 import { UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -14,7 +14,7 @@ const PlayerForm = ({ onPlayerAdded }) => {
     const [fileList, setFileList] = useState([]);
     const [uploading, setUploading] = useState(false);
 
-    // --- Handlers (handleFinish, handleUploadChange, beforeUpload) remain the same as before ---
+
     const handleFinish = async (values) => {
         setUploading(true);
         const formData = new FormData();
@@ -51,31 +51,27 @@ const PlayerForm = ({ onPlayerAdded }) => {
         const isJpgOrPngOrGif = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/gif';
         if (!isJpgOrPngOrGif) {
             message.error('You can only upload JPG/PNG/GIF file!');
-            return Upload.LIST_IGNORE; // More explicit way to reject in AntD v5+
+            return Upload.LIST_IGNORE;
         }
         const isLt1M = file.size / 1024 / 1024 < 1;
         if (!isLt1M) {
             message.error('Image must be smaller than 1MB!');
             return Upload.LIST_IGNORE;
         }
-        // Prevent auto-upload by returning false, we handle it manually
         return false;
     };
-    // --- End Handlers ---
 
 
     return (
-        // Wrap the Form in a Card for visual grouping and padding
         <Card title={<Title level={2} style={{ marginBottom: 0 , textAlign: 'center'}}>Add New Player</Title>}>
             <Form
                 form={form}
-                layout="vertical" // Vertical layout is usually clearer for forms
+                layout="vertical"
                 onFinish={handleFinish}
-                // No extra style needed here, Card provides padding
             >
                 <Form.Item
                     name="name"
-                    label="Player Name" // Labels above inputs
+                    label="Player Name"
                     rules={[{ required: true, message: 'Please input the player name!' }]}
                 >
                     <Input placeholder="Enter player name" />
@@ -96,24 +92,22 @@ const PlayerForm = ({ onPlayerAdded }) => {
                 <Form.Item
                     name="photo"
                     label="Player Photo"
-                    help="Optional. JPG/PNG/GIF < 1MB" // Help text below
+                    help="Optional. JPG/PNG/GIF < 1MB" 
                 >
                     <Upload
-                        listType="picture-card" // Use picture-card for a better visual
+                        listType="picture-card"
                         fileList={fileList}
                         beforeUpload={beforeUpload}
                         onChange={handleUploadChange}
-                        onRemove={() => setFileList([])} // Allow removal
+                        onRemove={() => setFileList([])}
                         maxCount={1}
                         accept=".jpg,.jpeg,.png,.gif"
                     >
-                        {/* Show upload button only if no file is selected */}
                         {fileList.length < 1 && <div><UploadOutlined /><div style={{ marginTop: 8 }}>Upload</div></div>}
                     </Upload>
                 </Form.Item>
 
                 <Form.Item
-                    // No label needed for the submit button container
                 >
                     <Button type="primary" htmlType="submit" loading={uploading} block>
                         {uploading ? 'Adding...' : 'Add Player'}

@@ -16,7 +16,6 @@ const MatchSetupForm = ({ onMatchCreated }) => {
     const [matchType, setMatchType] = useState('Individual');
 
     useEffect(() => {
-        // Set loading to true inside useEffect
         setLoadingPlayers(true);
         const fetchPlayers = async () => {
             try {
@@ -32,7 +31,7 @@ const MatchSetupForm = ({ onMatchCreated }) => {
         fetchPlayers();
     }, []);
 
-    // --- The payload construction was incorrect and caused conflicts ---
+
     const handleFinish = async (values) => {
         setSubmitting(true);
         console.log("Submitting Ind/Dual Match data:", values);
