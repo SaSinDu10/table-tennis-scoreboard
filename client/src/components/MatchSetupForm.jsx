@@ -1,6 +1,6 @@
 // src/components/MatchSetupForm.jsx
 import React, { useState, useEffect } from 'react';
-import { Form, Select, Button, message, Card, Typography, Radio, Spin, Alert } from 'antd';
+import { Form, Select, Button, message, Card, Typography, Radio, Spin, Alert, Row, Col, Divider } from 'antd';
 import axios from 'axios';
 
 const { Option } = Select;
@@ -135,8 +135,8 @@ const MatchSetupForm = ({ onMatchCreated }) => {
                     >
                         {/* --- onChange handler to the match type Radio.Group --- */}
                         <Radio.Group onChange={onMatchTypeChange}>
-                            <Radio value="Individual">Individual</Radio>
-                            <Radio value="Dual">Dual (Doubles)</Radio>
+                            <Radio value="Individual">Individual (1 vs 1)</Radio>
+                            <Radio value="Dual">Dual (2 vs 2)</Radio>
                         </Radio.Group>
                     </Form.Item>
 
@@ -148,7 +148,7 @@ const MatchSetupForm = ({ onMatchCreated }) => {
                         </Radio.Group>
                     </Form.Item>
 
-                    {/* --- Wrap player selection in a new dependency wrapper --- */}
+
                     <Form.Item
                         noStyle
                         shouldUpdate={(prevValues, currentValues) => prevValues.category !== currentValues.category}
@@ -170,48 +170,65 @@ const MatchSetupForm = ({ onMatchCreated }) => {
                                 <>
                                     {matchType === 'Individual' ? (
                                         <>
-                                            <Form.Item name="player1Id" label="Player 1" rules={[{ required: true }]}>
-                                                <Select placeholder="Select Player 1" showSearch optionFilterProp="children" allowClear>
-                                                    {getAvailablePlayers(selectedCategory, [p2_ind]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
-                                                </Select>
-                                            </Form.Item>
-                                            <Form.Item name="player2Id_individual" label="Player 2" rules={[{ required: true }]}>
-                                                <Select placeholder="Select Player 2" showSearch optionFilterProp="children" allowClear>
-                                                    {getAvailablePlayers(selectedCategory, [p1]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
-                                                </Select>
-                                            </Form.Item>
+                                            <Row gutter={16}>
+                                                <Col xs={24} sm={12}>
+                                                    <Form.Item name="player1Id" label="Player 1" rules={[{ required: true }]}>
+                                                        <Select placeholder="Select Player 1" showSearch optionFilterProp="children" allowClear>
+                                                            {getAvailablePlayers(selectedCategory, [p2_ind]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
+                                                        </Select>
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={12}>
+                                                    <Form.Item name="player2Id_individual" label="Player 2" rules={[{ required: true }]}>
+                                                        <Select placeholder="Select Player 2" showSearch optionFilterProp="children" allowClear>
+                                                            {getAvailablePlayers(selectedCategory, [p1]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
+                                                        </Select>
+                                                    </Form.Item>
+                                                </Col>
+                                            </Row>
                                         </>
                                     ) : ( // Dual Match
                                         <>
-                                            <Title level={5} style={{ marginTop: 10 }}>Team 1</Title>
-                                            <Form.Item name="player1Id" label="Team 1 - Player 1" rules={[{ required: true }]}>
-                                                <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
-                                                    {getAvailablePlayers(selectedCategory, [p2_dual, p3, p4]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
-                                                </Select>
-                                            </Form.Item>
-                                            <Form.Item name="player2Id_dual" label="Team 1 - Player 2" rules={[{ required: true }]}>
-                                                <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
-                                                    {getAvailablePlayers(selectedCategory, [p1, p3, p4]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
-                                                </Select>
-                                            </Form.Item>
+                                            <Row gutter={16} align="top">
+                                                <Col xs={24} md={11}>
+                                                    <Title level={5} style={{ marginTop: 10 }}>Team 1</Title>
+                                                    <Form.Item name="player1Id" label="Team 1 - Player 1" rules={[{ required: true }]}>
+                                                        <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
+                                                            {getAvailablePlayers(selectedCategory, [p2_dual, p3, p4]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
+                                                        </Select>
+                                                    </Form.Item>
+                                                    <Form.Item name="player2Id_dual" label="Team 1 - Player 2" rules={[{ required: true }]}>
+                                                        <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
+                                                            {getAvailablePlayers(selectedCategory, [p1, p3, p4]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
+                                                        </Select>
+                                                    </Form.Item>
+                                                </Col>
 
-                                            <Title level={5} style={{ marginTop: 10 }}>Team 2</Title>
-                                            <Form.Item name="player3Id" label="Team 2 - Player 1" rules={[{ required: true }]}>
-                                                <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
-                                                    {getAvailablePlayers(selectedCategory, [p1, p2_dual, p4]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
-                                                </Select>
-                                            </Form.Item>
-                                            <Form.Item name="player4Id" label="Team 2 - Player 2" rules={[{ required: true }]}>
-                                                <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
-                                                    {getAvailablePlayers(selectedCategory, [p1, p2_dual, p3]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
-                                                </Select>
-                                            </Form.Item>
+                                                <Col xs={0} md={2} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '220px' }}>
+                                                    <Divider type="vertical" style={{ height: '100%', minHeight: '200px' }} />
+                                                </Col>
+
+                                                <Col xs={24} md={11}>
+                                                    <Title level={5} style={{ marginTop: 10 }}>Team 2</Title>
+                                                    <Form.Item name="player3Id" label="Team 2 - Player 1" rules={[{ required: true }]}>
+                                                        <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
+                                                            {getAvailablePlayers(selectedCategory, [p1, p2_dual, p4]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
+                                                        </Select>
+                                                    </Form.Item>
+                                                    <Form.Item name="player4Id" label="Team 2 - Player 2" rules={[{ required: true }]}>
+                                                        <Select placeholder="Select Player" showSearch optionFilterProp="children" allowClear>
+                                                            {getAvailablePlayers(selectedCategory, [p1, p2_dual, p3]).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
+                                                        </Select>
+                                                    </Form.Item>
+                                                </Col>
+                                            </Row>
                                         </>
                                     )}
                                 </>
                             );
                         }}
                     </Form.Item>
+
 
                     <Form.Item style={{ marginTop: 24 }}>
                         <Button type="primary" htmlType="submit" loading={submitting} block>

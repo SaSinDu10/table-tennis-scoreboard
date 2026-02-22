@@ -148,6 +148,7 @@ router.post('/', async (req, res) => {
             } else if (teamMatchSubType === 'Relay') {
                 if (!numberOfSets || !setPointTarget) { return res.status(400).json({ message: 'Number of legs and points per leg are required.' }); }
                 newMatchData.numberOfSets = parseInt(numberOfSets, 10);
+                newMatchData.maxSetsPerPlayer = parseInt(maxSetsPerPlayer, 10) || 2;
                 newMatchData.setPointTarget = parseInt(setPointTarget, 10);
                 newMatchData.score.relayLegs = [];
                 newMatchData.score.overallScore = { team1: 0, team2: 0 };

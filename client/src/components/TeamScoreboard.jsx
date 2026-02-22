@@ -117,9 +117,10 @@ const TeamScoreboard = () => {
         const filterAvailable = (teamPlayers) => (teamPlayers || []).filter(player => {
             if (!player?._id) return false;
             const playedCount = pSetCounts.get(player._id.toString()) || 0;
-            if (rule === 'playOnce') return playedCount < 1;
-            return playedCount < maxSets;
+            const maxEncounters = matchData.maxSetsPerPlayer || (matchData.teamMatchSubType === 'Relay' ? 1 : 2);
+            return playedCount < maxEncounters;
         });
+
         return {
             nextEncounterIndex: nextIdx,
             availableTeam1Players: filterAvailable(matchData.team1.players),
@@ -225,11 +226,11 @@ const TeamScoreboard = () => {
         const formTitle = status === 'AwaitingTiebreakerPairs' ? 'Select Pairs for Tiebreaker' : `Select Players for ${encounterLabel} ${nextEncounterNumber}`;
         const getPlayerLabel = (player) => {
             if (!player?._id) return '';
-            if (teamMatchSubType === 'Relay') return player.name;
             const playedCount = playerSetCounts.get(player._id.toString()) || 0;
-            const maxSets = matchData?.maxSetsPerPlayer || 2;
-            const remaining = maxSets - playedCount;
-            return `${player.name} (${remaining} set${remaining !== 1 ? 's' : ''} left)`;
+            const maxEncounters = matchData?.maxSetsPerPlayer || (matchData.teamMatchSubType === 'Relay' ? 1 : 2);
+            const remaining = maxEncounters - playedCount;
+            const label = teamMatchSubType === 'Relay' ? 'leg' : 'set';
+            return `${player.name} (${remaining} ${label}${remaining !== 1 ? 's' : ''} left)`;
         };
         return (
             <Card title={<Title level={4}>{formTitle}</Title>} style={{ marginTop: 20 }}>

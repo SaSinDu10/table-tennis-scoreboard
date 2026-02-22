@@ -1,6 +1,6 @@
 // src/components/TeamSetMatchSetup.jsx
 import React, { useState, useEffect } from 'react';
-import { Form, Select, Button, message, Card, Typography, InputNumber, Spin, Radio } from 'antd';
+import { Form, Select, Button, message, Card, Typography, InputNumber, Spin, Radio, Row, Col } from 'antd';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -78,7 +78,7 @@ const TeamSetMatchSetup = ({ onTeamMatchCreated }) => {
     }
 
     return (
-        <Card title={<Title level={4} style={{ marginBottom: 0}}>Setup New "SET - Type" Team Match</Title>}>
+        <Card title={<Title level={4} style={{ marginBottom: 0 }}>Setup New "SET - Type" Team Match</Title>}>
             <Form
                 form={form}
                 layout="vertical"
@@ -86,59 +86,65 @@ const TeamSetMatchSetup = ({ onTeamMatchCreated }) => {
                 initialValues={{ numberOfSets: 7, encounterFormat: 'Dual', maxSetsPerPlayer: 2 }}
             >
 
-                <Form.Item
-                    name="team1Id"
-                    label="Select Team 1"
-                    rules={[{ required: true, message: 'Please select Team 1!' }]}
-                >
-                    <Select
-                        placeholder="Choose Team 1"
-                        loading={loadingTeams}
-                        showSearch
-                        optionFilterProp="children"
-                        filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                        options={allTeams.map(team => ({
-                            value: team._id,
-                            label: team.name
-                        }))}
-                        onChange={() => {
-                            const team1Value = form.getFieldValue('team1Id');
-                            const team2Value = form.getFieldValue('team2Id');
-                            if (team1Value && team1Value === team2Value) {
-                                form.setFieldsValue({ team2Id: undefined });
-                            }
-                        }}
-                    />
-                </Form.Item>
+                <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                        <Form.Item
+                            name="team1Id"
+                            label="Select Team 1"
+                            rules={[{ required: true, message: 'Please select Team 1!' }]}
+                        >
+                            <Select
+                                placeholder="Choose Team 1"
+                                loading={loadingTeams}
+                                showSearch
+                                optionFilterProp="children"
+                                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                                options={allTeams.map(team => ({
+                                    value: team._id,
+                                    label: team.name
+                                }))}
+                                onChange={() => {
+                                    const team1Value = form.getFieldValue('team1Id');
+                                    const team2Value = form.getFieldValue('team2Id');
+                                    if (team1Value && team1Value === team2Value) {
+                                        form.setFieldsValue({ team2Id: undefined });
+                                    }
+                                }}
+                            />
+                        </Form.Item>
+                    </Col>
 
-                <Form.Item
-                    noStyle
-                    shouldUpdate={(prevValues, currentValues) => prevValues.team1Id !== currentValues.team1Id}
-                >
-                    {({ getFieldValue }) => {
-                        const team1SelectedId = getFieldValue('team1Id');
-                        return (
-                            <Form.Item
-                                name="team2Id"
-                                label="Select Team 2"
-                                rules={[{ required: true, message: 'Please select Team 2!' }]}
-                            >
-                                <Select
-                                    placeholder="Choose Team 2"
-                                    loading={loadingTeams}
-                                    showSearch
-                                    optionFilterProp="children"
-                                    filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                                    options={getAvailableTeams(team1SelectedId).map(team => ({
-                                        value: team._id,
-                                        label: team.name
-                                    }))}
-                                    disabled={!team1SelectedId && allTeams.length > 0}
-                                />
-                            </Form.Item>
-                        );
-                    }}
-                </Form.Item>
+                    <Col xs={24} sm={12}>
+                        <Form.Item
+                            noStyle
+                            shouldUpdate={(prevValues, currentValues) => prevValues.team1Id !== currentValues.team1Id}
+                        >
+                            {({ getFieldValue }) => {
+                                const team1SelectedId = getFieldValue('team1Id');
+                                return (
+                                    <Form.Item
+                                        name="team2Id"
+                                        label="Select Team 2"
+                                        rules={[{ required: true, message: 'Please select Team 2!' }]}
+                                    >
+                                        <Select
+                                            placeholder="Choose Team 2"
+                                            loading={loadingTeams}
+                                            showSearch
+                                            optionFilterProp="children"
+                                            filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                                            options={getAvailableTeams(team1SelectedId).map(team => ({
+                                                value: team._id,
+                                                label: team.name
+                                            }))}
+                                            disabled={!team1SelectedId && allTeams.length > 0}
+                                        />
+                                    </Form.Item>
+                                );
+                            }}
+                        </Form.Item>
+                    </Col>
+                </Row>
 
                 <Form.Item
                     name="encounterFormat"
@@ -151,22 +157,28 @@ const TeamSetMatchSetup = ({ onTeamMatchCreated }) => {
                     </Radio.Group>
                 </Form.Item>
 
-                <Form.Item
-                    name="maxSetsPerPlayer"
-                    label="Max Sets Per Player"
-                    rules={[{ required: true, message: 'Please enter max sets per player!' }]}
-                    tooltip="The maximum number of sets any single player can participate in during this match."
-                >
-                    <InputNumber min={1} max={5} style={{ width: '100px' }} />
-                </Form.Item>
+                <Row gutter={16}>
+                    <Col xs={24} sm={8}>
+                        <Form.Item
+                            name="maxSetsPerPlayer"
+                            label="Max Sets Per Player"
+                            rules={[{ required: true, message: 'Please enter max sets per player!' }]}
+                            tooltip="The maximum number of sets any single player can participate in during this match."
+                        >
+                            <InputNumber min={1} max={5} style={{ width: '100px' }} />
+                        </Form.Item>
+                    </Col>
 
-                <Form.Item
-                    name="numberOfSets"
-                    label="Number of Sets in Match"
-                    rules={[{ required: true, message: 'Please enter the number of sets!' }]}
-                >
-                    <InputNumber min={1} max={9} style={{ width: '100px' }} />
-                </Form.Item>
+                    <Col xs={24} sm={8}>
+                        <Form.Item
+                            name="numberOfSets"
+                            label="Number of Sets in Match"
+                            rules={[{ required: true, message: 'Please enter the number of sets!' }]}
+                        >
+                            <InputNumber min={1} max={9} style={{ width: '100px' }} />
+                        </Form.Item>
+                    </Col>
+                </Row>
 
                 <Form.Item style={{ marginTop: 24 }}>
                     <Button type="primary" htmlType="submit" loading={submitting} block>

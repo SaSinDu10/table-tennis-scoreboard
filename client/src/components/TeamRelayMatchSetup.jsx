@@ -1,6 +1,6 @@
 // src/components/TeamRelayMatchSetup.jsx
 import React, { useState, useEffect } from 'react';
-import { Form, Select, Button, message, Card, Typography, InputNumber, Spin, Radio } from 'antd';
+import { Form, Select, Button, message, Card, Typography, InputNumber, Spin, Radio, Row, Col } from 'antd';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -49,6 +49,7 @@ const TeamRelayMatchSetup = ({ onTeamMatchCreated }) => {
             team2Id: values.team2Id,
             numberOfSets: values.numberOfLegs,
             setPointTarget: values.pointsPerLeg,
+            maxSetsPerPlayer: values.maxSetsPerPlayer
         };
 
         try {
@@ -72,60 +73,66 @@ const TeamRelayMatchSetup = ({ onTeamMatchCreated }) => {
     };
 
     if (loadingTeams && allTeams.length === 0) {
-        return
+        return <Card title={<Title level={4}>Setup New Team Relay Match</Title>}><Spin /></Card>;
     }
 
     return (
-        <Card title={<Title level={4} style={{ marginBottom: 0}}>Setup New "RELAY - Type" Team Relay Match</Title>}>
+        <Card title={<Title level={4} style={{ marginBottom: 0 }}>Setup New "RELAY - Type" Team Relay Match</Title>}>
             <Form
                 form={form}
                 layout="vertical"
                 onFinish={handleFinish}
-                initialValues={{ numberOfLegs: 5, pointsPerLeg: 10, encounterFormat: 'Individual'}}
+                initialValues={{ numberOfLegs: 5, pointsPerLeg: 10, encounterFormat: 'Individual', maxSetsPerPlayer: 2 }}
             >
 
-                <Form.Item name="team1Id" label="Select Team 1" rules={[{ required: true, message: 'Please select Team 1!' }]}>
-                    <Select
-                        placeholder="Choose Team 1"
-                        showSearch
-                        optionFilterProp="children"
-                        loading={loadingTeams}
-                        onChange={() => {
-                            const team1Value = form.getFieldValue('team1Id');
-                            const team2Value = form.getFieldValue('team2Id');
-                            if (team1Value && team1Value === team2Value) {
-                                form.setFieldsValue({ team2Id: undefined });
-                            }
-                        }}
-                    >
-                        {allTeams.map(team => <Option key={team._id} value={team._id}>{team.name}</Option>)}
-                    </Select>
-                </Form.Item>
-
-                <Form.Item
-                    noStyle
-                    shouldUpdate={(prevValues, currentValues) => prevValues.team1Id !== currentValues.team1Id}
-                >
-                    {({ getFieldValue }) => (
-                        <Form.Item
-                            name="team2Id"
-                            label="Select Team 2"
-                            rules={[{ required: true, message: 'Please select Team 2!' }]}
-                        >
+                <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                        <Form.Item name="team1Id" label="Select Team 1" rules={[{ required: true, message: 'Please select Team 1!' }]}>
                             <Select
-                                placeholder="Choose Team 2"
+                                placeholder="Choose Team 1"
                                 showSearch
                                 optionFilterProp="children"
                                 loading={loadingTeams}
-                                disabled={!getFieldValue('team1Id')} // Disable until Team 1 is selected
+                                onChange={() => {
+                                    const team1Value = form.getFieldValue('team1Id');
+                                    const team2Value = form.getFieldValue('team2Id');
+                                    if (team1Value && team1Value === team2Value) {
+                                        form.setFieldsValue({ team2Id: undefined });
+                                    }
+                                }}
                             >
-                                {getAvailableTeams(getFieldValue('team1Id')).map(team => (
-                                    <Option key={team._id} value={team._id}>{team.name}</Option>
-                                ))}
+                                {allTeams.map(team => <Option key={team._id} value={team._id}>{team.name}</Option>)}
                             </Select>
                         </Form.Item>
-                    )}
-                </Form.Item>
+                    </Col>
+
+                    <Col xs={24} sm={12}>
+                        <Form.Item
+                            noStyle
+                            shouldUpdate={(prevValues, currentValues) => prevValues.team1Id !== currentValues.team1Id}
+                        >
+                            {({ getFieldValue }) => (
+                                <Form.Item
+                                    name="team2Id"
+                                    label="Select Team 2"
+                                    rules={[{ required: true, message: 'Please select Team 2!' }]}
+                                >
+                                    <Select
+                                        placeholder="Choose Team 2"
+                                        showSearch
+                                        optionFilterProp="children"
+                                        loading={loadingTeams}
+                                        disabled={!getFieldValue('team1Id')} // Disable until Team 1 is selected
+                                    >
+                                        {getAvailableTeams(getFieldValue('team1Id')).map(team => (
+                                            <Option key={team._id} value={team._id}>{team.name}</Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+                            )}
+                        </Form.Item>
+                    </Col>
+                </Row>
 
                 <Form.Item name="encounterFormat" label="Encounter Format (for each leg)" rules={[{ required: true }]}>
                     <Radio.Group>
@@ -134,13 +141,30 @@ const TeamRelayMatchSetup = ({ onTeamMatchCreated }) => {
                     </Radio.Group>
                 </Form.Item>
 
-                <Form.Item name="numberOfLegs" label="Number of Legs in Match" rules={[{ required: true }]}>
-                    <InputNumber min={1} max={10} style={{ width: '100px' }} />
-                </Form.Item>
+                <Row gutter={16}>
+                    <Col xs={24} sm={8}>
+                        <Form.Item
+                            name="maxSetsPerPlayer"
+                            label="Max Legs Per Player"
+                            rules={[{ required: true, message: 'Please enter max legs per player!' }]}
+                            tooltip="The maximum number of legs any single player can participate in."
+                        >
+                            <InputNumber min={1} max={5} style={{ width: '100px' }} />
+                        </Form.Item>
+                    </Col>
 
-                <Form.Item name="pointsPerLeg" label="Points Per Leg" rules={[{ required: true }]}>
-                    <InputNumber min={5} max={50} style={{ width: '100px' }} />
-                </Form.Item>
+                    <Col xs={24} sm={8}>
+                        <Form.Item name="numberOfLegs" label="Number of Legs in Match" rules={[{ required: true }]}>
+                            <InputNumber min={1} max={10} style={{ width: '100px' }} />
+                        </Form.Item>
+                    </Col>
+
+                    <Col xs={24} sm={8}>
+                        <Form.Item name="pointsPerLeg" label="Points Per Leg" rules={[{ required: true }]}>
+                            <InputNumber min={5} max={50} style={{ width: '100px' }} />
+                        </Form.Item>
+                    </Col>
+                </Row>
 
                 <Form.Item style={{ marginTop: 24 }}>
                     <Button type="primary" htmlType="submit" loading={submitting} block>
