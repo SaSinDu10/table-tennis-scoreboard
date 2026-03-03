@@ -114,7 +114,7 @@ const PlayerRankings = () => {
                 }
             `}</style>
             <Card title={<Title level={1}>Player Rankings</Title>} style={{ textAlign: 'center'}}>
-                <Spin spinning={loading} tip="Loading Rankings...">
+                <Spin spinning={loading}>
                     <Table
                         columns={columns}
                         dataSource={rankings}

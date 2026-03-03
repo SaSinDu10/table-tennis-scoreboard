@@ -5,7 +5,7 @@ const Match = require('../models/Match');
 
 // GET /api/stats/rankings 
 router.get('/rankings', async (req, res) => {
-    console.log("--- GET /api/stats/rankings ROUTE HIT ---");
+    //console.log("--- GET /api/stats/rankings ROUTE HIT ---");
     try {
         const finishedMatches = await Match.find({ status: 'Finished' })
             .populate('player1 player2 player3 player4', 'name category photoUrl _id')
@@ -19,7 +19,7 @@ router.get('/rankings', async (req, res) => {
             return res.json([]);
         }
 
-        console.log(`Processing ${finishedMatches.length} finished matches for ranking...`);
+        //console.log(`Processing ${finishedMatches.length} finished matches for ranking...`);
         const playerStats = new Map();
 
         // Helper to safely add/update player stats
@@ -106,7 +106,7 @@ router.get('/rankings', async (req, res) => {
         const rankedPlayers = Array.from(playerStats.values())
             .sort((a, b) => b.points - a.points);
 
-        console.log(`Calculated rankings for ${rankedPlayers.length} players.`);
+        //console.log(`Calculated rankings for ${rankedPlayers.length} players.`);
         res.json(rankedPlayers);
 
     } catch (err) {

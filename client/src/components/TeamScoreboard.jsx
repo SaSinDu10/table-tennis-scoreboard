@@ -209,7 +209,7 @@ const TeamScoreboard = () => {
 
 
     // --- Loading, Error, and No Data Render States ---
-    if (loading) { return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" tip="Loading..." /></div>; }
+    if (loading) { return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>; }
     if (error) { return (<div style={{ padding: 20 }}> <Alert message="Error" description={error} type="error" showIcon /> <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginTop: 16 }}>Go Back</Button> </div>); }
     if (!matchData) { return (<div style={{ padding: 20 }}> <Alert message="Match data not found." type="warning" showIcon /> <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginTop: 16 }}>Go Back</Button> </div>); }
 

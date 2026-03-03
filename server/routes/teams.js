@@ -13,8 +13,8 @@ router.post('/', (req, res) => {
             return res.status(400).json({ message: err.message || "File upload error" });
         }
 
-        console.log('--- POST /api/teams ROUTE HIT ---');
-        console.log('Request Body:', req.body);
+        //console.log('--- POST /api/teams ROUTE HIT ---');
+        //console.log('Request Body:', req.body);
 
         let playerIds = req.body.playerIds;
         if (playerIds && !Array.isArray(playerIds)) {
@@ -39,7 +39,7 @@ router.post('/', (req, res) => {
                 path: 'players',
                 select: 'name photoUrl category'
             });
-            console.log(`Team '${savedTeam.name}' created successfully.`);
+            //console.log(`Team '${savedTeam.name}' created successfully.`);
             res.status(201).json(savedTeam);
 
         } catch (err) {
@@ -58,7 +58,7 @@ router.post('/', (req, res) => {
 
 // GET /api/teams - Get all teams
 router.get('/', async (req, res) => {
-    console.log('--- GET /api/teams ROUTE HIT ---');
+    //console.log('--- GET /api/teams ROUTE HIT ---');
     try {
         const teams = await Team.find()
             .populate({

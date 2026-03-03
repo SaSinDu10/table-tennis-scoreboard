@@ -11,10 +11,10 @@ const { uploadPlayerImage } = require('../middleware/upload');
 
 // --- GET all players ---
 router.get('/', async (req, res) => {
-    console.log('--- GET /api/players ROUTE HIT ---');
+    //console.log('--- GET /api/players ROUTE HIT ---');
     try {
         const players = await Player.find().sort({ name: 1 });
-        console.log(`Found ${players.length} players.`);
+        //console.log(`Found ${players.length} players.`);
         res.json(players);
     } catch (err) {
         console.error("!!! ERROR in GET /api/players:", err);
@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
 
 // --- POST create a new player (Handles file upload) ---
 router.post('/', (req, res) => {
-    console.log('--- POST /api/players ROUTE HIT ---');
+    //console.log('--- POST /api/players ROUTE HIT ---');
     uploadPlayerImage(req, res, async (err) => {
         // Handle potential Multer errors
         if (err) {
@@ -35,8 +35,8 @@ router.post('/', (req, res) => {
             return res.status(400).json({ message: err.message || "File upload error" });
         }
 
-        console.log('Multer processed file (if any). Req file:', req.file);
-        console.log('Request Body:', req.body);
+        //console.log('Multer processed file (if any). Req file:', req.file);
+        //console.log('Request Body:', req.body);
         const { name, category } = req.body;
 
 
@@ -58,9 +58,9 @@ router.post('/', (req, res) => {
 
         // Save to Database
         try {
-            console.log('Attempting to save new player...');
+            //console.log('Attempting to save new player...');
             const savedPlayer = await newPlayer.save();
-            console.log(`Player saved successfully: ${savedPlayer._id}`);
+            //console.log(`Player saved successfully: ${savedPlayer._id}`);
             res.status(201).json(savedPlayer);
         } catch (dbErr) {
             console.error("!!! Database Error saving player:", dbErr);
@@ -80,7 +80,7 @@ router.post('/', (req, res) => {
 // --- Placeholder for other routes ---
 // GET /api/players/:id
 router.get('/:id', async (req, res) => {
-    console.log(`--- GET /api/players/${req.params.id} ROUTE HIT ---`);
+    //console.log(`--- GET /api/players/${req.params.id} ROUTE HIT ---`);
     try {
         const player = await Player.findById(req.params.id);
         if (!player) {
@@ -96,15 +96,15 @@ router.get('/:id', async (req, res) => {
 
 // PUT /api/players/:id
 router.put('/:id', (req, res) => {
-    console.log(`--- PUT /api/players/${req.params.id} ROUTE HIT ---`);
+    //console.log(`--- PUT /api/players/${req.params.id} ROUTE HIT ---`);
     res.status(501).json({ message: 'Player update not implemented yet.' });
 });
 
 // DELETE /api/players/:id 
 router.delete('/:id', async (req, res) => {
-    console.log(`--- DELETE /api/players/${req.params.id} ROUTE HIT ---`);
+    //console.log(`--- DELETE /api/players/${req.params.id} ROUTE HIT ---`);
     try {
-        console.log(`Finding player ${req.params.id} to delete...`);
+        //console.log(`Finding player ${req.params.id} to delete...`);
         const player = await Player.findById(req.params.id);
         if (!player) { return res.status(404).json({ message: 'Player not found' }); }
         console.warn(`DELETING PLAYER ${player.name} - Match handling not implemented!`);
@@ -113,7 +113,7 @@ router.delete('/:id', async (req, res) => {
         // Delete photo file if it exists
         if (player.photoUrl) {
             const filePath = path.join(__dirname, '..', player.photoUrl);
-            console.log(`Attempting to delete photo file: ${filePath}`);
+            //console.log(`Attempting to delete photo file: ${filePath}`);
             fs.unlink(filePath, (unlinkErr) => {
                 if (unlinkErr && unlinkErr.code !== 'ENOENT') {
                     console.error("Error deleting player photo:", unlinkErr);

@@ -84,7 +84,7 @@ const updateIndDualScoreAndCheckWin = (match, scoringTeam) => {
 
 // --- GET /api/matches --- (Fetch multiple matches)
 router.get('/', async (req, res) => {
-    console.log('--- GET /api/matches ROUTE HIT ---');
+    //console.log('--- GET /api/matches ROUTE HIT ---');
     try {
         const filter = {};
         if (req.query.status) { filter.status = req.query.status; }
@@ -109,7 +109,7 @@ router.get('/', async (req, res) => {
 
 // --- GET /api/matches/:id --- (Fetch a single match with FULL details)
 router.get('/:id', async (req, res) => {
-    console.log(`--- GET /api/matches/${req.params.id} ROUTE HIT ---`);
+    //console.log(`--- GET /api/matches/${req.params.id} ROUTE HIT ---`);
     try {
         let match = await Match.findById(req.params.id);
         if (!match) { return res.status(404).json({ message: 'Match not found' }); }
@@ -124,8 +124,8 @@ router.get('/:id', async (req, res) => {
 
 // --- POST /api/matches --- (Create new match)
 router.post('/', async (req, res) => {
-    console.log('--- POST /api/matches ROUTE HIT ---');
-    console.log('Request Body:', req.body);
+    //console.log('--- POST /api/matches ROUTE HIT ---');
+    //console.log('Request Body:', req.body);
     const {
         category, matchType, player1Id, player2Id, player3Id, player4Id, bestOf,
         team1Id, team2Id, teamMatchSubType, teamMatchEncounterFormat, numberOfSets, maxSetsPerPlayer, setPointTarget
@@ -245,7 +245,7 @@ const setupEncounter = async (req, res) => {
     const matchId = req.params.id;
     const isRelay = req.path.includes('setup_relay_leg');
     const encounterType = isRelay ? 'Relay' : 'Set';
-    console.log(`--- PUT /setup_${encounterType.toLowerCase()} (Encounter ${setIndex + 1}) ROUTE HIT ---`);
+    //console.log(`--- PUT /setup_${encounterType.toLowerCase()} (Encounter ${setIndex + 1}) ROUTE HIT ---`);
 
     try {
         let match = await Match.findById(matchId)
@@ -385,14 +385,14 @@ router.put('/:id/score', async (req, res) => {
 
 // --- PUT /api/matches/:id/undo --- 
 router.put('/:id/undo', async (req, res) => {
-    console.log(`--- PUT /api/matches/${req.params.id}/undo ROUTE HIT ---`);
+    //console.log(`--- PUT /api/matches/${req.params.id}/undo ROUTE HIT ---`);
     try {
         const match = await Match.findById(req.params.id);
         if (!match) { return res.status(404).json({ message: 'Match not found' }); }
         if (match.status !== 'Live') { return res.status(400).json({ message: `Cannot undo point for status: ${match.status}` }); }
         if (!match.pointHistory || match.pointHistory.length === 0) { return res.status(400).json({ message: 'No points to undo.' }); }
 
-        console.log(`Reverting last point for match ${match._id}...`);
+        //console.log(`Reverting last point for match ${match._id}...`);
         const lastPoint = match.pointHistory.pop();
 
         // Restore score state from the history snapshot
@@ -414,17 +414,17 @@ router.put('/:id/undo', async (req, res) => {
         match.markModified('score');
         match.markModified('pointHistory');
         const updatedMatch = await match.save();
-        console.log(`Match ${updatedMatch._id} state reverted and saved successfully.`);
+        //console.log(`Match ${updatedMatch._id} state reverted and saved successfully.`);
 
-        console.log("--- DEBUG: Match object AFTER save, BEFORE populate ---");
+        //console.log("--- DEBUG: Match object AFTER save, BEFORE populate ---");
         if (updatedMatch.matchType === 'TeamSet' && updatedMatch.score.setDetails[0]) {
-            console.log("setDetails[0].team1Pair (before populate):", updatedMatch.score.setDetails[0].team1Pair);
-            console.log("setDetails[0].team2Pair (before populate):", updatedMatch.score.setDetails[0].team2Pair);
+            //console.log("setDetails[0].team1Pair (before populate):", updatedMatch.score.setDetails[0].team1Pair);
+            //console.log("setDetails[0].team2Pair (before populate):", updatedMatch.score.setDetails[0].team2Pair);
         }
 
         // Add full population before sending the response
         if (updatedMatch.matchType === 'Team') {
-            console.log("Attempting to populate TeamSet match for undo response...");
+            //console.log("Attempting to populate TeamSet match for undo response...");
             await updatedMatch.populate([
                 { path: 'team1', populate: { path: 'players', select: 'name photoUrl category _id' } },
                 { path: 'team2', populate: { path: 'players', select: 'name photoUrl category _id' } },
@@ -432,15 +432,15 @@ router.put('/:id/undo', async (req, res) => {
                 { path: 'score.setDetails.team2Pair', select: 'name photoUrl category _id' }
             ]);
         } else {
-            console.log("Attempting to populate Ind/Dual match for undo response...");
+            //console.log("Attempting to populate Ind/Dual match for undo response...");
             await updatedMatch.populate('player1 player2 player3 player4');
         }
-        console.log('Players populated for undo response.');
+        //console.log('Players populated for undo response.');
 
-        console.log("--- DEBUG: Match object AFTER populate ---");
+        //console.log("--- DEBUG: Match object AFTER populate ---");
         if (updatedMatch.matchType === 'TeamSet' && updatedMatch.score.setDetails[0]) {
-            console.log("setDetails[0].team1Pair (after populate):", updatedMatch.score.setDetails[0].team1Pair);
-            console.log("setDetails[0].team2Pair (after populate):", updatedMatch.score.setDetails[0].team2Pair);
+            //console.log("setDetails[0].team1Pair (after populate):", updatedMatch.score.setDetails[0].team1Pair);
+            //console.log("setDetails[0].team2Pair (after populate):", updatedMatch.score.setDetails[0].team2Pair);
         }
         res.json(updatedMatch);
 
