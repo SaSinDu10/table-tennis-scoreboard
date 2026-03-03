@@ -88,17 +88,16 @@ router.get('/', async (req, res) => {
     try {
         const filter = {};
         if (req.query.status) { filter.status = req.query.status; }
-        if (req.query.matchType) {
-            const types = Array.isArray(req.query.matchType) ? req.query.matchType : [req.query.matchType];
-            if (types.includes('Ind/Dual')) {
-                const otherTypes = types.filter(t => t !== 'Ind/Dual');
-                filter.matchType = { $in: ['Individual', 'Dual', ...otherTypes] };
+        if (req.query.matchTypeFilter) {
+            if (req.query.matchTypeFilter === 'Ind/Dual') {
+                filter.matchType = { $in: ['Individual', 'Dual'] };
             } else {
-                filter.matchType = { $in: types };
+                filter.matchType = req.query.matchTypeFilter;
             }
         }
         const matches = await Match.find(filter)
-            .populate('player1 player2 team1 team2', 'name')
+            .populate('player1 player2 player3 player4', 'name category photoUrl')
+            .populate('team1 team2', 'name logoUrl')
             .sort({ createdAt: -1 });
         res.json(matches);
     } catch (err) {
