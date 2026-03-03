@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Player = require('../models/Player');
 const upload = require('../middleware/upload');
+const Match = require('../models/Match');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
@@ -19,6 +20,21 @@ router.get('/', async (req, res) => {
     } catch (err) {
         console.error("!!! ERROR in GET /api/players:", err);
         res.status(500).json({ message: 'Server Error fetching players' });
+    }
+});
+
+// --- GET a single player by ID ---
+router.get('/:id', async (req, res) => {
+    //console.log(`--- GET /api/players/${req.params.id} ROUTE HIT ---`);
+    try {
+        const player = await Player.findById(req.params.id);
+        if (!player) {
+            return res.status(404).json({ message: 'Player not found' });
+        }
+        res.json(player);
+    } catch (err) {
+        if (err.name === 'CastError') { return res.status(400).json({ message: 'Invalid Player ID format' }); }
+        res.status(500).json({ message: 'Server Error fetching player' });
     }
 });
 
@@ -78,59 +94,114 @@ router.post('/', (req, res) => {
 });
 
 // --- Placeholder for other routes ---
-// GET /api/players/:id
-router.get('/:id', async (req, res) => {
-    //console.log(`--- GET /api/players/${req.params.id} ROUTE HIT ---`);
-    try {
-        const player = await Player.findById(req.params.id);
-        if (!player) {
-            return res.status(404).json({ message: 'Player not found' });
-        }
-        res.json(player);
-    } catch (err) {
-        console.error(`!!! ERROR in GET /api/players/${req.params.id}:`, err);
-        if (err.name === 'CastError') { return res.status(400).json({ message: 'Invalid Player ID format' }); }
-        res.status(500).json({ message: 'Server Error fetching player' });
-    }
-});
 
 // PUT /api/players/:id
 router.put('/:id', (req, res) => {
-    //console.log(`--- PUT /api/players/${req.params.id} ROUTE HIT ---`);
-    res.status(501).json({ message: 'Player update not implemented yet.' });
+    console.log(`--- PUT /api/players/${req.params.id} ROUTE HIT ---`);
+    // Use upload middleware to handle potential new photo upload
+    uploadPlayerImage(req, res, async (err) => {
+        if (err) {
+            return res.status(400).json({ message: err.message || "File upload error" });
+        }
+
+        const { name, category } = req.body;
+        if (!name || !category) {
+            return res.status(400).json({ message: 'Player name and category are required.' });
+        }
+
+        try {
+            const player = await Player.findById(req.params.id);
+            if (!player) {
+                // If a new file was uploaded for a non-existent player, delete it
+                if (req.file) { fs.unlink(req.file.path, e => e && console.error(e)); }
+                return res.status(404).json({ message: 'Player not found' });
+            }
+
+            // Check for duplicate name (if name is being changed)
+            if (name !== player.name) {
+                const existingPlayer = await Player.findOne({ name: name });
+                if (existingPlayer) {
+                    if (req.file) { fs.unlink(req.file.path, e => e && console.error(e)); }
+                    return res.status(400).json({ message: `Player name '${name}' already exists.` });
+                }
+            }
+
+            const oldPhotoPath = player.photoUrl;
+
+            // Update player fields
+            player.name = name;
+            player.category = category;
+            if (req.file) { // If a new photo was uploaded
+                player.photoUrl = `/uploads/players/${req.file.filename}`;
+            }
+
+            const updatedPlayer = await player.save();
+
+            // If update was successful and a new photo was uploaded, delete the old one
+            if (req.file && oldPhotoPath) {
+                const fullOldPath = path.join(__dirname, '..', oldPhotoPath);
+                fs.unlink(fullOldPath, (unlinkErr) => {
+                    if (unlinkErr && unlinkErr.code !== 'ENOENT') { // Ignore if file already doesn't exist
+                        console.error("Error deleting old player photo:", unlinkErr);
+                    }
+                });
+            }
+
+            res.json(updatedPlayer);
+
+        } catch (dbErr) {
+            if (req.file) { fs.unlink(req.file.path, e => e && console.error(e)); } // Clean up new file on any error
+            res.status(500).json({ message: 'Server error updating player', error: dbErr.message });
+        }
+    });
 });
 
 // DELETE /api/players/:id 
 router.delete('/:id', async (req, res) => {
     //console.log(`--- DELETE /api/players/${req.params.id} ROUTE HIT ---`);
     try {
-        //console.log(`Finding player ${req.params.id} to delete...`);
-        const player = await Player.findById(req.params.id);
-        if (!player) { return res.status(404).json({ message: 'Player not found' }); }
-        console.warn(`DELETING PLAYER ${player.name} - Match handling not implemented!`);
-        // -------------------------------------------------------------------
+        const playerId = req.params.id;
 
-        // Delete photo file if it exists
-        if (player.photoUrl) {
-            const filePath = path.join(__dirname, '..', player.photoUrl);
-            //console.log(`Attempting to delete photo file: ${filePath}`);
-            fs.unlink(filePath, (unlinkErr) => {
+        const matchesWithPlayer = await Match.find({
+            $or: [
+                { player1: playerId }, { player2: playerId },
+                { player3: playerId }, { player4: playerId },
+                { 'team1.players': playerId }, { 'team2.players': playerId },
+                { 'score.setDetails.team1Pair': playerId }, { 'score.setDetails.team2Pair': playerId },
+                { 'score.relayLegs.team1Players': playerId }, { 'score.relayLegs.team2Players': playerId }
+            ]
+        }).limit(1);
+
+        if (matchesWithPlayer.length > 0) {
+            return res.status(400).json({ message: 'Cannot delete player. They are part of one or more existing matches.' });
+        }
+        
+
+        const player = await Player.findById(playerId);
+        if (!player) {
+            return res.status(404).json({ message: 'Player not found' });
+        }
+
+        const photoPath = player.photoUrl;
+        await Player.findByIdAndDelete(playerId);
+
+        // Delete photo file from server if it exists
+        if (photoPath) {
+            const fullPath = path.join(__dirname, '..', photoPath);
+            fs.unlink(fullPath, (unlinkErr) => {
                 if (unlinkErr && unlinkErr.code !== 'ENOENT') {
                     console.error("Error deleting player photo:", unlinkErr);
-                } else if (!unlinkErr) {
-                    console.log(`Deleted photo file: ${filePath}`);
                 }
             });
         }
-
-        await Player.findByIdAndDelete(req.params.id);
-        console.log(`Player ${req.params.id} deleted successfully.`);
-        res.status(200).json({ message: 'Player deleted successfully', deletedPlayerId: req.params.id });
+        
+        res.status(200).json({ message: 'Player deleted successfully' });
 
     } catch (err) {
         console.error(`!!! ERROR in DELETE /api/players/${req.params.id}:`, err);
         res.status(500).json({ message: 'Server Error deleting player', error: err.message });
     }
 });
+
 
 module.exports = router;

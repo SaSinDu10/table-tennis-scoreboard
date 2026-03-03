@@ -132,6 +132,11 @@ function App() {
         { key: '5', label: 'Rankings', icon: <TrophyOutlined /> },
     ];
 
+    const handleListUpdate = () => {
+        fetchPlayers(); // Simply refetch the entire list to get the latest data
+        // For 'Teams' page, you'd have a handleTeamListUpdate that calls fetchTeams()
+    };
+
     return (
         <Layout style={{ minHeight: '100vh' }}>
             {!isScoreboardRoute && (
@@ -175,13 +180,13 @@ function App() {
                                 path="/"
                                 element={
                                     <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                        <PlayerForm onPlayerAdded={handlePlayerAdded} />
-                                        {/* Render PLAYER list, passing correct props */}
+                                        <PlayerForm onPlayerAdded={handleListUpdate} />
                                         <PlayerList
                                             players={players}
                                             loading={loadingPlayers}
                                             error={errorPlayers}
                                             title="All Players"
+                                            onListUpdate={handleListUpdate}
                                         />
                                     </Space>
                                 }
