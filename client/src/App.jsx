@@ -14,6 +14,7 @@ import MatchList from './components/MatchList';
 import Scoreboard from './components/Scoreboard';
 import TeamScoreboard from './components/TeamScoreboard';
 import PlayerRankings from './components/PlayerRankings';
+import BgSound from "./components/BgSound";
 import 'antd/dist/reset.css';
 
 import { UserOutlined, UnorderedListOutlined, TrophyOutlined, TeamOutlined, UsergroupAddOutlined } from '@ant-design/icons';
@@ -138,6 +139,7 @@ function App() {
     const handleTeamListUpdate = () => fetchTeams();
 
     return (
+        <>
         <Layout style={{ minHeight: '100vh' }}>
             {!isScoreboardRoute && (
                 <Sider breakpoint="lg" collapsedWidth="0">
@@ -251,6 +253,8 @@ function App() {
                 </Footer>
             </Layout>
         </Layout>
+        <BgSound/>
+        </>
     );
 }
 
