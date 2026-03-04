@@ -133,9 +133,9 @@ function App() {
     ];
 
     const handleListUpdate = () => {
-        fetchPlayers(); // Simply refetch the entire list to get the latest data
-        // For 'Teams' page, you'd have a handleTeamListUpdate that calls fetchTeams()
+        fetchPlayers();
     };
+    const handleTeamListUpdate = () => fetchTeams();
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
@@ -197,7 +197,13 @@ function App() {
                                 element={
                                     <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
                                         <TeamForm onTeamCreated={handleTeamCreated} />
-                                        <TeamList teams={teams} loading={loadingTeams} error={errorTeams} title="Registered Teams" />
+                                        <TeamList
+                                            teams={teams}
+                                            loading={loadingTeams}
+                                            error={errorTeams}
+                                            title="Registered Teams"
+                                            onListUpdate={handleTeamListUpdate}
+                                        />
                                     </Space>
                                 }
                             />
