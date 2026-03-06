@@ -420,14 +420,11 @@ const TeamScoreboard = () => {
                         icon={!winnerLogoUrl ? <UserOutlined /> : null}
                         style={{ marginTop: 24, border: '4px solid #f6ffed' }}
                     />,
-                    
                 ]}
                 style={{
                     padding: '48px 0'
                 }}
             />
-            
-
         );
     };
 
@@ -459,6 +456,5 @@ const TeamScoreboard = () => {
         </Card>
     );
 };
-
 
 export default TeamScoreboard;
