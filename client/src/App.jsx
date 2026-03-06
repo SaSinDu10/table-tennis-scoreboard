@@ -15,9 +15,13 @@ import Scoreboard from './components/Scoreboard';
 import TeamScoreboard from './components/TeamScoreboard';
 import PlayerRankings from './components/PlayerRankings';
 import BgSound from "./components/BgSound";
+import FinishedMatchesPage from './components/FinishedMatchesPage';
 import 'antd/dist/reset.css';
 
-import { UserOutlined, UnorderedListOutlined, TrophyOutlined, TeamOutlined, UsergroupAddOutlined, SoundOutlined } from '@ant-design/icons';
+import {
+    UserOutlined, UnorderedListOutlined, TrophyOutlined,
+    TeamOutlined, UsergroupAddOutlined, SoundOutlined, CheckCircleOutlined
+} from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
@@ -124,6 +128,7 @@ function App() {
         if (path === '/setup-match') return '3';
         if (path === '/team-matches') return '4';
         if (path === '/rankings') return '5';
+        if (path === '/finished-matches') return '6'; 
         return '1';
     };
 
@@ -133,6 +138,7 @@ function App() {
         { key: '3', label: 'Ind/Dual Matches', icon: <UnorderedListOutlined /> },
         { key: '4', label: 'Team Matches', icon: <TeamOutlined /> },
         { key: '5', label: 'Rankings', icon: <TrophyOutlined /> },
+        { key: '6', label: 'Match History', icon: <CheckCircleOutlined /> },
     ];
 
     const handleListUpdate = () => {
@@ -147,19 +153,17 @@ function App() {
                     <Sider
                         breakpoint="lg"
                         collapsedWidth="0"
-                        // --- NEW: Add the onCollapse function to update our state ---
                         onCollapse={(collapsed) => {
                             setSiderCollapsed(collapsed);
                         }}
-                        // --- NEW: Add the style to make the Sider fixed ---
                         style={{
-                            height: '100vh',      // Make the Sider take the full height of the screen
-                            position: 'fixed',    // Fix its position relative to the browser window
-                            left: 0,              // Pin it to the left edge
-                            top: 0,               // Pin it to the top edge
-                            bottom: 0,            // Pin it to the bottom edge
-                            zIndex: 10,           // Ensure it stays on top of other content
-                            overflow: 'auto',     // Add a scrollbar *inside* the sider if the menu gets too long
+                            height: '100vh',
+                            position: 'fixed',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            zIndex: 10,
+                            overflow: 'auto',
                         }}
                     >
                         <div style={{ height: '32px', margin: '16px', background: 'rgba(255, 255, 255, 0.2)', textAlign: 'center', color: 'white', lineHeight: '32px', borderRadius: '4px' }}> Menu </div>
@@ -172,6 +176,7 @@ function App() {
                                 else if (key === '3') navigate('/setup-match');
                                 else if (key === '4') navigate('/team-matches');
                                 else if (key === '5') navigate('/rankings');
+                                else if (key === '6') navigate('/finished-matches');
                             }}
                             items={menuItems}
                         />
@@ -257,7 +262,6 @@ function App() {
                                             <MatchSetupForm onMatchCreated={handleMatchCreated} />
                                             <MatchList key={`upcoming-${matchListVersion}`} status="Upcoming" title="Upcoming Matches" />
                                             <MatchList key={`live-${matchListVersion}`} status="Live" title="Live Matches" />
-                                            <MatchList key={`finished-${matchListVersion}`} status="Finished" title="Finished Matches" />
                                         </Space>
                                     }
                                 />
@@ -284,6 +288,8 @@ function App() {
                                 <Route path="/team-match/:id/score" element={<TeamScoreboard />} />
                                 {/* Player Rankings Route */}
                                 <Route path="/rankings" element={<PlayerRankings />} />
+                                {/* Finished Matches Route */}
+                                <Route path="/finished-matches" element={<FinishedMatchesPage />} />
                             </Routes>
                         </div>
                     </Content>
