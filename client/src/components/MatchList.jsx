@@ -161,16 +161,30 @@ const MatchList = ({ status = 'Upcoming', title = 'Matches', matchTypeFilter = n
                             key={match._id}
                             actions={
                                 status === 'Upcoming' ? [
-                                    (match.matchType !== 'Team' && 
-                                        <Select key="length" value={match.setsToWin} style={{ width: 120 }} onChange={(val) => handleLengthChange(match._id, val)} disabled={isUpdating}>
-                                            <Option value={1}>Best of 1</Option><Option value={2}>Best of 3</Option><Option value={3}>Best of 5</Option>
+                                    // The 'Best of' selector should only show for Ind/Dual matches
+                                    (match.matchType !== 'Team' && (
+                                        <Select key="length" defaultValue={match.setsToWin} style={{ width: 120 }} onChange={(val) => handleLengthChange(match._id, val)} disabled={isUpdating}>
+                                            <Option value={1}>Best of 1</Option>
+                                            <Option value={2}>Best of 3</Option>
+                                            <Option value={3}>Best of 5</Option>
                                         </Select>
-                                    ),
+                                    )),
+                                    // The 'Start & Score' button shows for all upcoming matches
                                     <Button key="start" type="primary" onClick={() => handleNavigateToScoreboard(match)} disabled={isUpdating}>Start & Score</Button>,
-                                    <Popconfirm key="delete" title="Delete?" onConfirm={() => handleDeleteMatch(match._id)} okButtonProps={{ loading: isUpdating }}><Button danger type="text" icon={<DeleteOutlined />} disabled={isUpdating} /></Popconfirm>
+                                    
+                                    // --- NEW: The Delete button will now also show for ALL upcoming matches, including Teams ---
+                                    <Popconfirm 
+                                        key="delete" 
+                                        title="Delete this match?"
+                                        description="This action cannot be undone."
+                                        onConfirm={() => handleDeleteMatch(match._id)} 
+                                        okButtonProps={{ loading: isUpdating }}
+                                    >
+                                        <Button danger type="text" icon={<DeleteOutlined />} disabled={isUpdating} />
+                                    </Popconfirm>
                                 ] : status === 'Live' ? [
                                     <Button key="view" onClick={() => handleNavigateToScoreboard(match)}>View Scoreboard</Button>
-                                ] : []
+                                ] : [] // No actions for 'Finished' matches
                             }
                         >
                             <List.Item.Meta

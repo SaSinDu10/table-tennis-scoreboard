@@ -279,22 +279,22 @@ const TeamScoreboard = () => {
                     <Row justify="space-around" align="top" gutter={[16, 24]} style={{ marginBottom: 24, textAlign: 'center' }}>
                         <Col xs={24} sm={10}>
                             <Space direction="vertical" align="center" size="middle">
-                                {renderCurrentPairAvatars(team1PlayingPair, matchData.score.server === 1)}
                                 <Space align="center" size="large">
-                                    <Avatar size={100} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
+                                    <Avatar shape='square' size={100} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
                                 </Space>
-                                <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 1)}</Title>
+                                <Title level={4} style={{ marginBottom: 0, marginTop: 0 }}>{getTeamName(matchData, 1)}</Title>
+                                {renderCurrentPairAvatars(team1PlayingPair, matchData.score.server === 1)}
                                 <Statistic title="Overall Sets Won" value={matchData.score?.currentSetScore?.team1 ?? 0} />
                             </Space>
                         </Col>
                         <Col xs={24} sm={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold', minHeight: '150px' }}>vs</Col>
                         <Col xs={24} sm={10}>
                             <Space direction="vertical" align="center" size="middle">
-                                {renderCurrentPairAvatars(team2PlayingPair, matchData.score.server === 2)}
                                 <Space align="center" size="large">
-                                    <Avatar size={100} src={matchData.team2?.logoUrl ? `${API_URL}${matchData.team2.logoUrl}` : undefined} icon={<UserOutlined />} />
+                                    <Avatar shape='square' size={100} src={matchData.team2?.logoUrl ? `${API_URL}${matchData.team2.logoUrl}` : undefined} icon={<UserOutlined />} />
                                 </Space>
-                                <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 2)}</Title>
+                                <Title level={4} style={{ marginBottom: 0, marginTop: 0 }}>{getTeamName(matchData, 2)}</Title>
+                                {renderCurrentPairAvatars(team2PlayingPair, matchData.score.server === 2)}
                                 <Statistic title="Overall Sets Won" value={matchData.score?.currentSetScore?.team2 ?? 0} />
                             </Space>
                         </Col>
@@ -354,27 +354,27 @@ const TeamScoreboard = () => {
                     <Row justify="space-around" align="top" gutter={[16, 24]} style={{ marginBottom: 24, textAlign: 'center' }}>
                         <Col xs={24} sm={10}>
                             <Space direction="vertical" align="center" size="middle">
-                                {renderCurrentPairAvatars(team1PlayingPair, matchData.score.server === 1)}
                                 <Space align="center" size="large">
-                                    <Avatar size={100} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
-
+                                    <Avatar shape='square' size={100} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
                                 </Space>
-                                <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 1)}</Title>
+                                <Title level={4} style={{ marginBottom: 0, marginTop: 0 }}>{getTeamName(matchData, 1)}</Title>
+                                {renderCurrentPairAvatars(team1PlayingPair, matchData.score.server === 1)}
                             </Space>
                         </Col>
                         <Col xs={24} sm={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold', minHeight: '150px' }}>
                             <Statistic title="Final Target" value={finalTargetScore} />
                         </Col>
+
                         <Col xs={24} sm={10}>
                             <Space direction="vertical" align="center" size="middle">
-                                {renderCurrentPairAvatars(team2PlayingPair, matchData.score.server === 2)}
                                 <Space align="center" size="large">
-                                    <Avatar size={100} src={matchData.team2?.logoUrl ? `${API_URL}${matchData.team2.logoUrl}` : undefined} icon={<UserOutlined />} />
-
+                                    <Avatar shape='square' size={100} src={matchData.team2?.logoUrl ? `${API_URL}${matchData.team2.logoUrl}` : undefined} icon={<UserOutlined />} />
                                 </Space>
-                                <Title level={4} style={{ marginBottom: 0, marginTop: 8 }}>{getTeamName(matchData, 2)}</Title>
+                                <Title level={4} style={{ marginBottom: 0, marginTop: 0 }}>{getTeamName(matchData, 2)}</Title>
+                                {renderCurrentPairAvatars(team2PlayingPair, matchData.score.server === 2)}
                             </Space>
                         </Col>
+
                     </Row>
                     <Divider>Overall Score (Leg Target: {legTargetScore})</Divider>
                     <Row justify="space-around" align="middle" gutter={16}>
