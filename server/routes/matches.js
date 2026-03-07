@@ -401,6 +401,10 @@ router.put('/:id/undo', async (req, res) => {
         match.score.currentSetScore = { ...(lastPoint.scoreStateBefore.currentSetScore ?? { team1: 0, team2: 0 }) };
         match.score.server = lastPoint.scoreStateBefore.server ?? 1;
 
+        if (lastPoint.scoreStateBefore.overallScore) {
+            match.score.overallScore = { ...(lastPoint.scoreStateBefore.overallScore) };
+        }
+
         // Simple status revert if the undone point finished the match
         if (match.status === 'Finished') {
             match.status = 'Live';
@@ -412,7 +416,10 @@ router.put('/:id/undo', async (req, res) => {
 
         match.markModified('score');
         match.markModified('pointHistory');
-        const updatedMatch = await match.save();
+        let updatedMatch = await match.save();
+        updatedMatch = await populateMatch(updatedMatch);
+
+        res.json(updatedMatch);
         //console.log(`Match ${updatedMatch._id} state reverted and saved successfully.`);
 
         //console.log("--- DEBUG: Match object AFTER save, BEFORE populate ---");
