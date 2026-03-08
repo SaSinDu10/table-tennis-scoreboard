@@ -134,27 +134,42 @@ const Scoreboard = () => {
     }
 
     // --- Avatar Rendering Helper Function ---
-    const renderAvatars = (players, isServing) => {
-        const avatarSize = 100;
-        const avatarContent = (p) => (
-            <Avatar size={avatarSize} src={p.photoUrl ? `${API_URL}${p.photoUrl}` : undefined}>
-                {!p.photoUrl ? p.name?.charAt(0) : null}
-            </Avatar>
-        );
+    const renderAvatars = (players, isServing, side = 'left') => {
+        const avatarSize = 80;
+        const avatarContent = (player) => {
+            if (!player) return null;
+            const avatarSrc = player.photoUrl ? `${API_URL}${player.photoUrl}` : undefined;
+            return (
+                <Avatar key={player._id} size={avatarSize} src={avatarSrc} icon={!avatarSrc ? <UserOutlined /> : null}>
+                    {!avatarSrc ? player.name?.charAt(0)?.toUpperCase() : null}
+                </Avatar>
+            );
+        };
 
         let avatarComponent;
+
         if (!players || players.length === 0) {
             avatarComponent = <Avatar size={avatarSize} icon={<UserOutlined />} />;
         } else if (players.length === 1) {
             avatarComponent = avatarContent(players[0]);
         } else {
-            avatarComponent = <Avatar.Group max={{ count: 2 }}>{players.map(p => <Avatar key={p._id} {...avatarContent(p).props} />)}</Avatar.Group>;
+            const containerWidth = avatarSize + 80;
+            avatarComponent = (
+                <Space direction="vertical" size={2}>
+                    <div style={{ width: containerWidth, display: 'flex', justifyContent: side === 'left' ? 'flex-start' : 'flex-end' }}>
+                        {avatarContent(players[0])}
+                    </div>
+                    <div style={{ width: containerWidth, display: 'flex', justifyContent: side === 'left' ? 'flex-end' : 'flex-start' }}>
+                        {avatarContent(players[1])}
+                    </div>
+                </Space>
+            );
         }
 
         if (isServing && isLive) {
             return (
                 <Tooltip title="Serving">
-                    <span style={{ border: '3px solid #1677ff', borderRadius: '50%', display: 'inline-block', padding: '3px', lineHeight: 0 }}>
+                    <span style={{ border: '3px solid #1677ff', borderRadius: '16px', display: 'inline-block', padding: '8px', lineHeight: 1 }}>
                         {avatarComponent}
                     </span>
                 </Tooltip>
@@ -162,6 +177,7 @@ const Scoreboard = () => {
         }
         return avatarComponent;
     };
+
 
     // --- UI for Selecting First Server ---
     if (isUpcoming) {
@@ -183,42 +199,43 @@ const Scoreboard = () => {
     // --- UI for Live or Finished Match ---
     return (
         <Card variant={false} style={{ padding: '16px' }}>
-            <Row justify="space-between" align="middle" style={{ marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid #f0f0f0' }}>
-                <Col><Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/setup-match')}> Back to Matches </Button></Col>
+            <Row justify="space-between" align="middle" style={{ marginBottom: 5, paddingBottom: 5, borderBottom: '1px solid #f0f0f0' }}>
+                <Col><Button style={{ color: '#aa14f0' }} icon={<ArrowLeftOutlined />} onClick={() => navigate('/setup-match')}> Back to Matches </Button></Col>
                 <Col><Title level={3} style={{ margin: 0 }}>Scoreboard - {category} ({matchType})</Title></Col>
                 <Col style={{ minWidth: 150, textAlign: 'right' }}>
-                    {isLive && (<Button icon={<UndoOutlined />} onClick={handleUndo} disabled={!canUndo || isUpdatingScore || isUndoing} loading={isUndoing}> Undo Last Point </Button>)}
+                    {isLive &&
+                        (<Button style={{ color: '#d81365' }} icon={<UndoOutlined />} onClick={handleUndo} disabled={!canUndo || isUpdatingScore || isUndoing} loading={isUndoing}> Undo Last Point </Button>)}
                 </Col>
             </Row>
 
-            <Tag color="blue" style={{ display: 'block', textAlign: 'center', margin: '8px auto 24px auto', fontSize: '1rem', maxWidth: '200px' }}>
+            <Tag color="green" style={{ display: 'block', textAlign: 'center', margin: '8px auto 24px auto', fontSize: '1rem', maxWidth: '200px' }}>
                 {formatBestOf(setsToWin)} ({status})
             </Tag>
 
             {isFinished ? (
-            <Result
-                icon={<TrophyOutlined style={{ color: '#52c41a' }} />}
-                title={<Title level={2} style={{ color: '#52c41a' }}>Congratulations, {winnerName}!</Title>}
-                subTitle="You have won the match."
-                extra={
-                    <Space direction="vertical" align="center" size="large">
-                        {renderAvatars(
-                            matchType === 'Individual'
-                                ? [winner.toString() === player1?._id.toString() ? player1 : player2]
-                                : (winner === 1 ? [player1, player2] : [player3, player4]),
-                            false
-                        )}
-                        <Title level={4} style={{ marginTop: 8 }}>Final Set Score: {score?.currentSetScore?.team1 ?? 0} - {score?.currentSetScore?.team2 ?? 0}</Title>
-                    </Space>
-                }
-            />
-        ) : null}
+                <Result
+                    icon={<TrophyOutlined style={{ color: '#52c41a' }} />}
+                    title={<Title level={2} style={{ color: '#52c41a' }}>Congratulations, {winnerName}!</Title>}
+                    subTitle="You have won the match."
+                    extra={
+                        <Space direction="vertical" align="center" size="large">
+                            {renderAvatars(
+                                matchType === 'Individual'
+                                    ? [winner.toString() === player1?._id.toString() ? player1 : player2]
+                                    : (winner === 1 ? [player1, player2] : [player3, player4]),
+                                false
+                            )}
+                            <Title level={4} style={{ marginTop: 8 }}>Final Set Score: {score?.currentSetScore?.team1 ?? 0} - {score?.currentSetScore?.team2 ?? 0}</Title>
+                        </Space>
+                    }
+                />
+            ) : null}
 
             {!isFinished && (
                 <Row justify="space-around" align="top" gutter={[16, 24]} style={{ marginBottom: 24, textAlign: 'center' }}>
                     <Col xs={24} sm={10}>
                         <Space direction="vertical" align="center" size="large">
-                            {renderAvatars(matchType === 'Dual' ? [player1, player2].filter(Boolean) : [player1].filter(Boolean), currentServer === 1)}
+                            {renderAvatars(matchType === 'Dual' ? [player1, player2].filter(Boolean) : [player1].filter(Boolean), currentServer === 1, 'left')}
                             <Title level={4} style={{ marginTop: 8 }}>{team1Name}</Title>
                             <Statistic title="Sets Won" value={score?.currentSetScore?.team1 ?? 0} />
                         </Space>
@@ -226,7 +243,7 @@ const Scoreboard = () => {
                     <Col xs={24} sm={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold' }}>vs</Col>
                     <Col xs={24} sm={10}>
                         <Space direction="vertical" align="center" size="large">
-                            {renderAvatars(matchType === 'Dual' ? [player3, player4].filter(Boolean) : [player2].filter(Boolean), currentServer === 2)}
+                            {renderAvatars(matchType === 'Dual' ? [player3, player4].filter(Boolean) : [player2].filter(Boolean), currentServer === 2, 'right')}
                             <Title level={4} style={{ marginTop: 8 }}>{team2Name}</Title>
                             <Statistic title="Sets Won" value={score?.currentSetScore?.team2 ?? 0} />
                         </Space>
