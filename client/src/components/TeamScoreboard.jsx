@@ -18,62 +18,50 @@ const getTeamName = (match, teamNumber) => {
     return teamData?.name || `Team ${teamNumber}`;
 };
 
-const renderCurrentPairAvatars = (players, isServing, side = 'left') => {
+const renderCurrentPairAvatars = (players, isLive, serverId, receiverId, side = 'left') => {
     const avatarSize = 80;
-    const avatarContent = (player) => {
-        if (!player) return null;
-        const avatarSrc = player.photoUrl ? `${API_URL}${player.photoUrl}` : undefined;
-        return (
-            <Avatar key={player._id} size={avatarSize} src={avatarSrc} icon={!avatarSrc ? <UserOutlined /> : null}>
-                {!avatarSrc ? player.name?.charAt(0)?.toUpperCase() : null}
+    const avatarContent = (p) => {
+        if (!p) return null;
+        const isServing = isLive && p._id === serverId;
+        const isReceiving = isLive && p._id === receiverId;
+
+        const avatar = (
+            <Avatar key={p._id} size={avatarSize} src={p.photoUrl ? `${API_URL}${p.photoUrl}` : undefined}>
+                {!p.photoUrl ? p.name?.charAt(0)?.toUpperCase() : null}
             </Avatar>
         );
+
+        if (isServing) {
+            return <Tooltip title="Serving"><span style={{ border: '3px solid #1677ff', borderRadius: '50%', display: 'inline-block', padding: '3px', lineHeight: 0 }}>{avatar}</span></Tooltip>;
+        }
+        if (isReceiving) {
+            return <Tooltip title="Receiving"><span style={{ border: '3px solid #faad14', borderRadius: '50%', display: 'inline-block', padding: '3px', lineHeight: 0 }}>{avatar}</span></Tooltip>;
+        }
+        return avatar;
     };
 
-    let avatarComponent;
-
     if (!players || players.length === 0) {
-        avatarComponent = <Avatar size={avatarSize} icon={<UserOutlined />} />;
-    } else if (players.length === 1) {
-        avatarComponent = avatarContent(players[0]);
-    } else {
-        const containerWidth = avatarSize + 40;
-
-        avatarComponent = (
-            <Space direction="vertical" size={1}>
-                <div style={{
-                    width: containerWidth,
-                    display: 'flex',
-                    justifyContent: side === 'left' ? 'flex-start' : 'flex-end'
-                }}>
-                    {avatarContent(players[0])}
-                </div>
-
-                <div style={{
-                    width: containerWidth,
-                    display: 'flex',
-                    justifyContent: side === 'left' ? 'flex-end' : 'flex-start'
-                }}>
-                    {avatarContent(players[1])}
-                </div>
-            </Space>
-        );
+        return <Avatar size={avatarSize} icon={<UserOutlined />} />;
+    }
+    if (players.length === 1) {
+        return avatarContent(players[0]);
     }
 
-    if (isServing) {
-        return (
-            <Tooltip title="Serving">
-                <span style={{
-                    border: '3px solid #1677ff', borderRadius: '16px', display: 'inline-block', padding: '8px', lineHeight: 1
-                }}>
-                    {avatarComponent}
-                </span>
-            </Tooltip>
-        );
-    }
+    const containerWidth = avatarSize + 40;
+    const avatarComponent = (
+        <Space direction="vertical" size={4}>
+            <div style={{ width: containerWidth, display: 'flex', justifyContent: side === 'left' ? 'flex-start' : 'flex-end' }}>
+                {avatarContent(players[0])}
+            </div>
+            <div style={{ width: containerWidth, display: 'flex', justifyContent: side === 'left' ? 'flex-end' : 'flex-start' }}>
+                {avatarContent(players[1])}
+            </div>
+        </Space>
+    );
 
     return avatarComponent;
 };
+
 const TeamScoreboard = () => {
     const { id: matchId } = useParams();
     const navigate = useNavigate();
@@ -85,6 +73,9 @@ const TeamScoreboard = () => {
     const [isUpdatingScore, setIsUpdatingScore] = useState(false);
     const [isUndoing, setIsUndoing] = useState(false);
     const [pairSelectionForm] = Form.useForm();
+    const selectedTeam1Players = Form.useWatch('team1Players', pairSelectionForm);
+    const selectedTeam2Players = Form.useWatch('team2Players', pairSelectionForm);
+    const selectedServingTeam = Form.useWatch('initialServer', pairSelectionForm);
 
     useEffect(() => {
         if (!matchId) return;
@@ -169,7 +160,9 @@ const TeamScoreboard = () => {
         const payload = {
             setIndex: nextEncounterIndex,
             team1PairIds, team2PairIds,
-            initialServer: values.initialServer
+            initialServer: values.initialServer,
+            initialServerPlayerId: values.initialServerPlayerId,
+            initialReceiverPlayerId: values.initialReceiverPlayerId,
         };
         console.log(`Submitting to /${endpoint} with payload:`, payload);
         try {
@@ -230,20 +223,24 @@ const TeamScoreboard = () => {
         }
     };
 
-
     // --- Loading, Error, and No Data Render States ---
     if (loading) { return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>; }
     if (error) { return (<div style={{ padding: 20 }}> <Alert message="Error" description={error} type="error" showIcon /> <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginTop: 16 }}>Go Back</Button> </div>); }
     if (!matchData) { return (<div style={{ padding: 20 }}> <Alert message="Match data not found." type="warning" showIcon /> <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginTop: 16 }}>Go Back</Button> </div>); }
 
-    const { status, teamMatchSubType } = matchData;
+    const { status, teamMatchSubType, teamMatchEncounterFormat } = matchData;
     const isAwaitingSetup = status === 'Upcoming' || status === 'AwaitingSubMatchSetup' || status === 'AwaitingTiebreakerPairs';
     const isLive = status === 'Live';
     const isFinished = status === 'Finished';
     const canUndo = isLive && matchData?.pointHistory?.length > 0;
+    const isDualEncounter = teamMatchEncounterFormat === 'Dual';
 
     // --- UI for Player/Pair Selection (Unified for both Set and Relay) ---
     const renderEncounterSelectionForm = () => {
+        if (!matchData.team1 || !matchData.team2) {
+            return <Spin tip="Loading team details..." />;
+        }
+        
         const encounterLabel = teamMatchSubType === 'Relay' ? 'Leg' : 'Set';
         const nextEncounterNumber = nextEncounterIndex + 1;
         const formTitle = status === 'AwaitingTiebreakerPairs' ? 'Select Pairs for Tiebreaker' : `Select Players for ${encounterLabel} ${nextEncounterNumber}`;
@@ -255,29 +252,73 @@ const TeamScoreboard = () => {
             const label = teamMatchSubType === 'Relay' ? 'leg' : 'set';
             return `${player.name} (${remaining} ${label}${remaining !== 1 ? 's' : ''} left)`;
         };
+        const getSelectedPlayers = (ids) => {
+            // If ids is falsy (null, undefined) or not an array, return an empty array.
+            if (!ids || !Array.isArray(ids)) {
+                // For single-select mode, the value might not be an array, so we handle that.
+                if (ids && typeof ids === 'string') {
+                    ids = [ids];
+                } else {
+                    return [];
+                }
+            }
+            const allTeamPlayers = [...(matchData.team1.players || []), ...(matchData.team2.players || [])];
+            return ids.map(id => allTeamPlayers.find(p => p._id === id)).filter(Boolean);
+        };
+
+        const team1Pair = getSelectedPlayers(selectedTeam1Players);
+        const team2Pair = getSelectedPlayers(selectedTeam2Players);
+
+        // The rest of this function is unchanged and correct
         return (
             <Card title={<Title level={4}>{formTitle}</Title>} style={{ marginTop: 20 }}>
                 {formError && <Alert message={`Error Starting ${encounterLabel}`} description={formError} type="error" showIcon closable onClose={() => setFormError(null)} style={{ marginBottom: 16 }} />}
-                <Form form={pairSelectionForm} layout="vertical" onFinish={handleSetupEncounter} onFinishFailed={(err) => console.log('Validation Failed:', err)}>
+                <Form form={pairSelectionForm} layout="vertical" onFinish={handleSetupEncounter}>
                     <Row gutter={24}>
                         <Col xs={24} md={12}>
                             <Title level={5}>{getTeamName(matchData, 1)}</Title>
-                            <Form.Item name="team1Players" label={`Select ${encounterSize} Player(s)`} rules={[{ required: true, message: `Please select player(s).` }]}>
-                                <Select mode={encounterSize > 1 ? "multiple" : undefined} placeholder={`Select player${encounterSize > 1 ? 's' : ''}`} allowClear options={(availableTeam1Players).map(p => ({ value: p._id, label: getPlayerLabel(p) }))} />
+                            <Form.Item name="team1Players" label={`Select ${encounterSize} Player(s)`} rules={[{ required: true }]}>
+                                <Select mode={encounterSize > 1 ? "multiple" : undefined} placeholder={`Select player(s)`} allowClear options={availableTeam1Players.map(p => ({ value: p._id, label: getPlayerLabel(p) }))} />
                             </Form.Item>
                         </Col>
                         <Col xs={24} md={12}>
                             <Title level={5}>{getTeamName(matchData, 2)}</Title>
-                            <Form.Item name="team2Players" label={`Select ${encounterSize} Player(s)`} rules={[{ required: true, message: `Please select player(s).` }]}>
-                                <Select mode={encounterSize > 1 ? "multiple" : undefined} placeholder={`Select player${encounterSize > 1 ? 's' : ''}`} allowClear options={(availableTeam2Players).map(p => ({ value: p._id, label: getPlayerLabel(p) }))} />
+                            <Form.Item name="team2Players" label={`Select ${encounterSize} Player(s)`} rules={[{ required: true }]}>
+                                <Select mode={encounterSize > 1 ? "multiple" : undefined} placeholder={`Select player(s)`} allowClear options={availableTeam2Players.map(p => ({ value: p._id, label: getPlayerLabel(p) }))} />
                             </Form.Item>
                         </Col>
                     </Row>
-                    <Form.Item name="initialServer" label={`Who Serves First in this ${encounterLabel}?`} rules={[{ required: true }]}>
-                        <Radio.Group> <Radio value={1}>{getTeamName(matchData, 1)}</Radio> <Radio value={2}>{getTeamName(matchData, 2)}</Radio> </Radio.Group>
-                    </Form.Item>
+                    
+                    {isDualEncounter && team1Pair.length === 2 && team2Pair.length === 2 && (
+                        <>
+                            <Form.Item name="initialServer" label="1. Select Serving Team" rules={[{ required: true }]}>
+                                <Radio.Group><Radio value={1}>{getTeamName(matchData, 1)}</Radio><Radio value={2}>{getTeamName(matchData, 2)}</Radio></Radio.Group>
+                            </Form.Item>
+                            {selectedServingTeam && (
+                                <>
+                                    <Form.Item name="initialServerPlayerId" label="2. Select First Server" rules={[{ required: true }]}>
+                                        <Select placeholder="Choose player to serve first">
+                                            {(selectedServingTeam === 1 ? team1Pair : team2Pair).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
+                                        </Select>
+                                    </Form.Item>
+                                    <Form.Item name="initialReceiverPlayerId" label="3. Select First Receiver" rules={[{ required: true }]}>
+                                        <Select placeholder="Choose player to receive first">
+                                            {(selectedServingTeam === 1 ? team2Pair : team1Pair).map(p => <Option key={p._id} value={p._id}>{p.name}</Option>)}
+                                        </Select>
+                                    </Form.Item>
+                                </>
+                            )}
+                        </>
+                    )}
+
+                    {!isDualEncounter && (
+                        <Form.Item name="initialServer" label="Who Serves First?" rules={[{ required: true }]}>
+                            <Radio.Group><Radio value={1}>{getTeamName(matchData, 1)}</Radio><Radio value={2}>{getTeamName(matchData, 2)}</Radio></Radio.Group>
+                        </Form.Item>
+                    )}
+
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" loading={isSubmitting} block> Confirm Players & Start {encounterLabel} {nextEncounterNumber} </Button>
+                        <Button type="primary" htmlType="submit" loading={isSubmitting} block>Start {encounterLabel}</Button>
                     </Form.Item>
                 </Form>
             </Card>
@@ -287,6 +328,10 @@ const TeamScoreboard = () => {
     // --- Main Scoreboard Display (Live scoring UI) ---
     // --- UI for Live Scoring (Router) ---
     const renderLiveScoreboard = () => {
+
+        const currentPlayerServerId = matchData.score?.currentPlayerServer?._id;
+        const currentPlayerReceiverId = matchData.score?.currentPlayerReceiver?._id;
+
         // --- 'Set' Match Live UI ---
         if (teamMatchSubType === 'Set') {
             const currentLiveSetDetail = matchData.score?.setDetails?.find(s => s.status === 'Live');
@@ -299,8 +344,8 @@ const TeamScoreboard = () => {
             return (
                 <>
                     <Title level={5} style={{ textAlign: 'center' }}>Set {currentSetNumberForDisplay}: {team1PlayingNames} vs {team2PlayingNames}</Title>
-                    <Row justify="space-around" align="top" gutter={[16, 24]} style={{ marginBottom: 24, textAlign: 'center' }}>
-                        <Col xs={24} sm={10}>
+                    <Row justify="space-around" align="middle" gutter={[16, 24]} style={{ marginBottom: 24, textAlign: 'center' }}>
+                        <Col xs={24} md={10}>
                             <Space align="center" size="middle">
                                 <Card>
                                     <Space direction="vertical" align="center">
@@ -309,13 +354,13 @@ const TeamScoreboard = () => {
                                         <Statistic title="Overall Sets Won" value={matchData.score?.currentSetScore?.team1 ?? 0} />
                                     </Space>
                                 </Card>
-                                {renderCurrentPairAvatars(team1PlayingPair, matchData.score.server === 1, 'left')}
+                                {renderCurrentPairAvatars(team1PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, 'left')}
                             </Space>
                         </Col>
-                        <Col xs={24} sm={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold', minHeight: '150px' }}>vs</Col>
+                        <Col xs={24} md={4}>vs</Col>
                         <Col xs={24} md={10}>
                             <Space align="center" size="middle">
-                                {renderCurrentPairAvatars(team2PlayingPair, matchData.score.server === 2, 'right')}
+                                {renderCurrentPairAvatars(team2PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, 'right')}
                                 <Card>
                                     <Space direction="vertical" align="center">
                                         <Title level={4} style={{ margin: 0 }}>{getTeamName(matchData, 2)}</Title>
@@ -364,33 +409,23 @@ const TeamScoreboard = () => {
         if (matchData.teamMatchSubType === 'Relay') {
             const currentLeg = matchData.score?.relayLegs?.find(l => l.status === 'Live');
             if (!currentLeg) return <Alert message="Waiting for next leg setup..." type="info" showIcon />;
-
-            const currentLegNumber = currentLeg.legNumber;
-            const legTargetScore = (matchData.setPointTarget || 10) * currentLegNumber;
-            const finalTargetScore = (matchData.setPointTarget || 10) * (matchData.numberOfSets || 1);
-
-            // --- DEFINE THE PLAYING PAIR VARIABLES HERE ---
-            const team1PlayingPair = (currentLeg.team1Players || []).map(pId =>
-                matchData.team1?.players.find(p => p._id === (pId._id || pId))
-            ).filter(Boolean);
-            const team2PlayingPair = (currentLeg.team2Players || []).map(pId =>
-                matchData.team2?.players.find(p => p._id === (pId._id || pId))
-            ).filter(Boolean);
+            const team1PlayingPair = (currentLeg.team1Players || []).map(pId => matchData.team1?.players.find(p => p._id === (pId._id || pId))).filter(Boolean);
+            const team2PlayingPair = (currentLeg.team2Players || []).map(pId => matchData.team2?.players.find(p => p._id === (pId._id || pId))).filter(Boolean);
 
             return (
                 <>
                     <Title level={5} style={{ textAlign: 'center' }}>Leg {currentLegNumber}:{team1PlayingPair.map(p => p.name).join(' & ')} vs {team2PlayingPair.map(p => p.name).join(' & ')}</Title>
                     <Row justify="space-around" align="middle" gutter={[16, 24]} style={{ marginBottom: 24, textAlign: 'center' }}>
-                        
+
                         <Col xs={24} md={10}>
                             <Space align="center" size="middle">
-                                <Card>
-                                    <Space direction="vertical" align="center">
+                                <Space direction="vertical" align="center">
+                                    <Card>
                                         <Title level={4} style={{ margin: 0 }}>{getTeamName(matchData, 1)}</Title>
                                         <Avatar shape='square' size={120} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
-                                    </Space>
-                                </Card>
-                                {renderCurrentPairAvatars(team1PlayingPair, matchData.score.server === 1, 'left')}
+                                    </Card>
+                                </Space>
+                                {renderCurrentPairAvatars(team1PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, 'left')}
                             </Space>
                         </Col>
 
@@ -400,7 +435,7 @@ const TeamScoreboard = () => {
 
                         <Col xs={24} md={10}>
                             <Space align="center" size="middle">
-                                {renderCurrentPairAvatars(team2PlayingPair, matchData.score.server === 2, 'right')}
+                                {renderCurrentPairAvatars(team2PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, 'right')}
                                 <Card>
                                     <Space direction="vertical" align="center">
                                         <Title level={4} style={{ margin: 0 }}>{getTeamName(matchData, 2)}</Title>
@@ -409,7 +444,7 @@ const TeamScoreboard = () => {
                                 </Card>
                             </Space>
                         </Col>
-                    </Row>
+                    </Row >
 
                     <Divider>Overall Score (Leg Target: {legTargetScore})</Divider>
                     <Row justify="space-around" align="middle" gutter={16}>
@@ -437,29 +472,36 @@ const TeamScoreboard = () => {
         const winnerLogoUrl = winningTeamData?.logoUrl ? `${API_URL}${winningTeamData.logoUrl}` : undefined;
 
         return (
-            <Result
-                icon={<TrophyOutlined style={{ color: '#52c41a' }} />}
-                title={<Title level={2} style={{ color: '#52c41a' }}>Congratulations, {winnerName}!</Title>}
-                subTitle="You have won the match."
-                extra={[
-                    <Title level={4} key="final-score">
-                        {matchData.teamMatchSubType === 'Set'
-                            ? `Final Set Score: ${matchData.score?.currentSetScore?.team1 ?? 0} - ${matchData.score?.currentSetScore?.team2 ?? 0}`
-                            : `Final Score: ${matchData.score?.overallScore?.team1 ?? 0} - ${matchData.score?.overallScore?.team2 ?? 0}`
-                        }
-                    </Title>,
-                    <Avatar
-                        key="winner-logo"
-                        size={128}
-                        src={winnerLogoUrl}
-                        icon={!winnerLogoUrl ? <UserOutlined /> : null}
-                        style={{ marginTop: 24, border: '4px solid #f6ffed' }}
-                    />,
-                ]}
-                style={{
-                    padding: '48px 0'
-                }}
-            />
+            <>
+                <Col>
+                    <Button style={{ color: '#aa14f0' }} icon={<ArrowLeftOutlined />} onClick={() => navigate('/team-matches')}>
+                        Back to Team Matches
+                    </Button>
+                </Col>
+                <Result
+                    icon={<TrophyOutlined style={{ color: '#52c41a' }} />}
+                    title={<Title level={2} style={{ color: '#52c41a' }}>Congratulations, {winnerName}!</Title>}
+                    subTitle="You have won the match."
+                    extra={[
+                        <Title level={4} key="final-score">
+                            {matchData.teamMatchSubType === 'Set'
+                                ? `Final Set Score: ${matchData.score?.currentSetScore?.team1 ?? 0} - ${matchData.score?.currentSetScore?.team2 ?? 0}`
+                                : `Final Score: ${matchData.score?.overallScore?.team1 ?? 0} - ${matchData.score?.overallScore?.team2 ?? 0}`
+                            }
+                        </Title>,
+                        <Avatar
+                            key="winner-logo"
+                            size={128}
+                            src={winnerLogoUrl}
+                            icon={!winnerLogoUrl ? <UserOutlined /> : null}
+                            style={{ marginTop: 24, border: '4px solid #f6ffed' }}
+                        />,
+                    ]}
+                    style={{
+                        padding: '48px 0'
+                    }}
+                />
+            </>
         );
     };
 
