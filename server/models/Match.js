@@ -45,14 +45,14 @@ const matchSchema = new Schema({
         type: String,
         enum: ['Individual', 'Dual'],
     },
-    
+
     setPointTarget: { // Only for Relay Matches
         type: Number
     },
 
-    category: { 
-        type: String, 
-        enum: ['Super Senior', 'Senior', 'Junior'] 
+    category: {
+        type: String,
+        enum: ['Super Senior', 'Senior', 'Junior']
     },
 
     // --- Fields for Individual/Dual Matches ---
@@ -61,6 +61,10 @@ const matchSchema = new Schema({
     player3: { type: Schema.Types.ObjectId, ref: 'Player' },
     player4: { type: Schema.Types.ObjectId, ref: 'Player' },
     setsToWin: { type: Number },
+
+    // --- CORRECT: These fields are at the root level ---
+    initialServerPlayer: { type: Schema.Types.ObjectId, ref: 'Player' },
+    initialReceiverPlayer: { type: Schema.Types.ObjectId, ref: 'Player' },
 
     // --- Fields for Team Matches ---
     team1: { type: Schema.Types.ObjectId, ref: 'Team' },
@@ -71,25 +75,23 @@ const matchSchema = new Schema({
     score: {
         // For Ind/Dual
         sets: { type: [[Number]], default: [] },
-
         // For 'Set' sub-type Team Matches
         setDetails: [setDetailSchema],
-
         // For 'Relay' sub-type Team Matches
         relayLegs: [relayLegSchema],
         overallScore: {
             team1: { type: Number, default: 0 },
             team2: { type: Number, default: 0 }
         },
-
         // Score within the *current live game*
         currentGame: { team1: { type: Number, default: 0 }, team2: { type: Number, default: 0 } },
-
         // For Team 'Set' Matches
         currentSetScore: { team1: { type: Number, default: 0 }, team2: { type: Number, default: 0 } },
-
-        // Server for the current live game
-        server: { type: Number, enum: [1, 2], default: 1 }
+        // This represents the serving TEAM (1 or 2)
+        server: { type: Number, enum: [1, 2], default: 1 },
+        // These fields store the CURRENT server and receiver PLAYER
+        currentPlayerServer: { type: Schema.Types.ObjectId, ref: 'Player' },
+        currentPlayerReceiver: { type: Schema.Types.ObjectId, ref: 'Player' },
     },
 
     pointHistory: [pointHistorySchema],
@@ -104,7 +106,7 @@ const matchSchema = new Schema({
 }, { timestamps: true });
 
 // --- Pre-save hook needs to be updated for 'Team' type ---
-matchSchema.pre('save', function(next) {
+matchSchema.pre('save', function (next) {
     if (this.matchType === 'Team') {
         if (!this.team1 || !this.team2 || !this.teamMatchSubType || !this.teamMatchEncounterFormat) {
             return next(new Error('Teams, sub-type, and encounter format are required for Team matches.'));
