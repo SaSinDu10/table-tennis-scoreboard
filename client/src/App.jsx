@@ -36,7 +36,7 @@ function App() {
     const [teams, setTeams] = useState([]);
     const [loadingTeams, setLoadingTeams] = useState(true);
     const [errorTeams, setErrorTeams] = useState(null);
-    const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+    const [isSoundEnabled, setIsSoundEnabled] = useState(false);
     const [siderCollapsed, setSiderCollapsed] = useState(false);
 
     // React Router hooks
