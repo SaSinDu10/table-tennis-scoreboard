@@ -52,60 +52,47 @@ const getNextServer = (currentGameScore, currentServer) => {
 };
 
 const getNextDualServerAndReceiver = (match) => {
+    const totalPoints = match.teamMatchSubType === 'Relay'
+        ? (match.score.overallScore.team1 || 0) + (match.score.overallScore.team2 || 0)
+        : (match.score.currentGame.team1 || 0) + (match.score.currentGame.team2 || 0);
 
-    const team1Score = match.score.currentGame?.team1 || 0;
-    const team2Score = match.score.currentGame?.team2 || 0;
+    let team1PlayerIds, team2PlayerIds;
 
-    const totalPoints = team1Score + team2Score;
-
-    let p1Id, p2Id, p3Id, p4Id;
-
-    if (match.matchType === 'Team') {
+    if (match.teamMatchSubType === 'Relay') {
+        const liveLeg = match.score.relayLegs.find(l => l.status === 'Live');
+        team1PlayerIds = liveLeg.team1Players.map(p => p._id.toString());
+        team2PlayerIds = liveLeg.team2Players.map(p => p._id.toString());
+    } else if (match.teamMatchSubType === 'Set') {
         const liveSet = match.score.setDetails.find(s => s.status === 'Live');
-
-        [p1Id, p2Id] = liveSet.team1Pair.map(p => p.toString());
-        [p3Id, p4Id] = liveSet.team2Pair.map(p => p.toString());
-    }
-    else {
-        p1Id = match.player1._id.toString();
-        p2Id = match.player2._id.toString();
-        p3Id = match.player3._id.toString();
-        p4Id = match.player4._id.toString();
+        team1PlayerIds = liveSet.team1Pair.map(p => p._id.toString());
+        team2PlayerIds = liveSet.team2Pair.map(p => p._id.toString());
+    } else {
+        team1PlayerIds = [match.player1._id.toString(), match.player2._id.toString()];
+        team2PlayerIds = [match.player3._id.toString(), match.player4._id.toString()];
     }
 
     const initialServerId = match.initialServerPlayer._id.toString();
     const initialReceiverId = match.initialReceiverPlayer._id.toString();
 
-    const serverPartnerId = [p1Id, p2Id, p3Id, p4Id].find(id =>
-        ([p1Id, p2Id].includes(initialServerId) && [p1Id, p2Id].includes(id) && id !== initialServerId) ||
-        ([p3Id, p4Id].includes(initialServerId) && [p3Id, p4Id].includes(id) && id !== initialServerId)
+    const allPlayerIds = [...team1PlayerIds, ...team2PlayerIds];
+
+    const serverPartnerId = allPlayerIds.find(id =>
+        (team1PlayerIds.includes(initialServerId) && team1PlayerIds.includes(id) && id !== initialServerId) ||
+        (team2PlayerIds.includes(initialServerId) && team2PlayerIds.includes(id) && id !== initialServerId)
     );
 
-    const receiverPartnerId = [p1Id, p2Id, p3Id, p4Id].find(id =>
-        ([p1Id, p2Id].includes(initialReceiverId) && [p1Id, p2Id].includes(id) && id !== initialReceiverId) ||
-        ([p3Id, p4Id].includes(initialReceiverId) && [p3Id, p4Id].includes(id) && id !== initialReceiverId)
+    const receiverPartnerId = allPlayerIds.find(id =>
+        (team1PlayerIds.includes(initialReceiverId) && team1PlayerIds.includes(id) && id !== initialReceiverId) ||
+        (team2PlayerIds.includes(initialReceiverId) && team2PlayerIds.includes(id) && id !== initialReceiverId)
     );
 
-    const serverRotation = [
-        initialServerId,
-        initialReceiverId,
-        serverPartnerId,
-        receiverPartnerId
-    ];
-
-    const receiverRotation = [
-        initialReceiverId,
-        serverPartnerId,
-        receiverPartnerId,
-        initialServerId
-    ];
+    const serverRotation = [initialServerId, initialReceiverId, serverPartnerId, receiverPartnerId];
+    const receiverRotation = [initialReceiverId, serverPartnerId, receiverPartnerId, initialServerId];
 
     let changeIndex;
-
     if (totalPoints >= (POINTS_TO_WIN_GAME - 1) * 2) {
         changeIndex = totalPoints;
-    }
-    else {
+    } else {
         changeIndex = Math.floor(totalPoints / POINTS_TO_CHANGE_SERVER);
     }
 
@@ -142,7 +129,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// --- GET /api/matches/:id --- (Fetch a single match with FULL details)
+// --- GET /api/matches/:id --- (Fetch single match)
 router.get('/:id', async (req, res) => {
     //console.log(`--- GET /api/matches/${req.params.id} ROUTE HIT ---`);
     try {
@@ -250,7 +237,6 @@ router.delete('/:id', async (req, res) => {
 
 // --- PUT /api/matches/:id/start --- (For Individual/Dual)
 router.put('/:id/start', async (req, res) => {
-    // These are the values sent from your Scoreboard.jsx form
     const { initialServer, initialServerPlayerId, initialReceiverPlayerId } = req.body;
 
     try {
@@ -261,25 +247,23 @@ router.put('/:id/start', async (req, res) => {
         match.status = 'Live';
         match.startTime = new Date();
 
-        // Reset the score object to ensure a clean start
         match.score = {
             currentGame: { team1: 0, team2: 0 },
             currentSetScore: { team1: 0, team2: 0 },
             sets: [],
-            server: initialServer, // Set the serving TEAM
+            server: initialServer,
         };
         match.pointHistory = [];
 
-        // This block handles the special logic for Dual matches
         if (match.matchType === 'Dual') {
             if (!initialServerPlayerId || !initialReceiverPlayerId) {
                 return res.status(400).json({ message: 'Server and Receiver players are required for a Dual match.' });
             }
-            // --- CORRECTED: Save these to the root of the match document ---
+            // ---Save these to the root of the match document ---
             match.initialServerPlayer = initialServerPlayerId;
             match.initialReceiverPlayer = initialReceiverPlayerId;
 
-            // --- CORRECT: These are saved inside the score object ---
+            // ---These are saved inside the score object ---
             match.score.currentPlayerServer = initialServerPlayerId;
             match.score.currentPlayerReceiver = initialReceiverPlayerId;
         }
@@ -287,7 +271,6 @@ router.put('/:id/start', async (req, res) => {
         match.markModified('score');
         let updatedMatch = await match.save();
 
-        // Repopulate with all player details before sending back
         updatedMatch = await populateMatch(updatedMatch);
 
         res.json(updatedMatch);
@@ -299,7 +282,6 @@ router.put('/:id/start', async (req, res) => {
 
 // --- PUT /api/matches/:id/setup_set OR setup_relay_leg ---
 const setupEncounter = async (req, res) => {
-    // --- CORRECTED: Added the new player IDs from the request body ---
     const {
         setIndex, team1PairIds, team2PairIds, initialServer,
         initialServerPlayerId, initialReceiverPlayerId
@@ -343,16 +325,13 @@ const setupEncounter = async (req, res) => {
         match.score.currentGame = { team1: 0, team2: 0 };
         match.score.server = initialServer;
 
-        // --- CORRECTED: Added the missing logic block for dual encounters ---
         if (match.teamMatchEncounterFormat === 'Dual') {
             if (!initialServerPlayerId || !initialReceiverPlayerId) {
                 return res.status(400).json({ message: 'Server and Receiver players are required for a Dual encounter.' });
             }
-            // Save to the root of the document
             match.initialServerPlayer = initialServerPlayerId;
             match.initialReceiverPlayer = initialReceiverPlayerId;
 
-            // Save the current players to the score object
             match.score.currentPlayerServer = initialServerPlayerId;
             match.score.currentPlayerReceiver = initialReceiverPlayerId;
         }
@@ -374,43 +353,38 @@ router.put('/:id/setup_relay_leg', setupEncounter);
 
 // --- PUT /api/matches/:id/next-set-server ---
 router.put('/:id/next-set-server', async (req, res) => {
-    const { initialServerPlayerId, initialReceiverPlayerId } = req.body;
+    const { initialServer, initialServerPlayerId, initialReceiverPlayerId } = req.body;
 
     try {
         let match = await Match.findById(req.params.id);
-        if (!match) return res.status(404).json({ message: 'Match not found' });
-
+        if (!match) { return res.status(404).json({ message: 'Match not found' }); }
         if (match.status !== 'AwaitingSubMatchSetup') {
             return res.status(400).json({ message: 'Match is not awaiting next set setup.' });
         }
 
-        // NEW SET → update initial players
-        match.initialServerPlayer = initialServerPlayerId;
-        match.initialReceiverPlayer = initialReceiverPlayerId;
+        if (match.matchType === 'Individual') {
+            if (!initialServer) {
+                return res.status(400).json({ message: 'Serving team is required for the next set.' });
+            }
+            match.score.server = initialServer;
 
-        // Set current server/receiver
-        match.score.currentPlayerServer = initialServerPlayerId;
-        match.score.currentPlayerReceiver = initialReceiverPlayerId;
+        } else if (match.matchType === 'Dual') {
+            if (!initialServerPlayerId || !initialReceiverPlayerId) {
+                return res.status(400).json({ message: 'Server and Receiver players are required for the next set.' });
+            }
+            match.score.currentPlayerServer = initialServerPlayerId;
+            match.score.currentPlayerReceiver = initialReceiverPlayerId;
 
-        // Reset game score
-        match.score.currentGame.team1 = 0;
-        match.score.currentGame.team2 = 0;
-
-        // Determine which team serves
-        const team1Players = [
-            match.player1?._id.toString(),
-            match.player2?._id.toString()
-        ];
-
-        match.score.server = team1Players.includes(initialServerPlayerId) ? 1 : 2;
+            const team1Players = [match.player1?._id.toString(), match.player2?._id.toString()];
+            match.score.server = team1Players.includes(initialServerPlayerId) ? 1 : 2;
+        }
 
         match.status = 'Live';
-
+        match.score.currentGame = { team1: 0, team2: 0 };
         match.markModified('score');
 
         let updatedMatch = await match.save();
         updatedMatch = await populateMatch(updatedMatch);
-
         res.json(updatedMatch);
 
     } catch (err) {
@@ -425,7 +399,9 @@ router.put('/:id/score', async (req, res) => {
     if (![1, 2].includes(scoringTeam)) { return res.status(400).json({ message: 'Invalid scoring team.' }); }
 
     try {
-        let match = await Match.findById(req.params.id).populate('player1 player2 player3 player4 initialServerPlayer initialReceiverPlayer winner');
+        let match = await Match.findById(req.params.id).populate(
+            'player1 player2 player3 player4 initialServerPlayer initialReceiverPlayer winner score.setDetails.team1Pair score.setDetails.team2Pair score.relayLegs.team1Players score.relayLegs.team2Players'
+        );
         if (!match) { return res.status(404).json({ message: 'Match not found' }); }
         if (match.status !== 'Live') { return res.status(400).json({ message: `Match status is ${match.status}, not Live.` }); }
 
@@ -434,26 +410,48 @@ router.put('/:id/score', async (req, res) => {
         match.pointHistory.push({ scoringTeam, scoreStateBefore, timestamp: new Date() });
 
         if (match.matchType === 'Team' && match.teamMatchSubType === 'Relay') {
-            // --- This Relay logic  ---
+            // ---RELAY SCORING LOGIC ---
             if (scoringTeam === 1) match.score.overallScore.team1++; else match.score.overallScore.team2++;
+
             const liveLegIndex = match.score.relayLegs.findIndex(l => l.status === 'Live');
             if (liveLegIndex === -1) throw new Error("No live relay leg found.");
+
             const liveLeg = match.score.relayLegs[liveLegIndex];
             const team1Total = match.score.overallScore.team1;
             const team2Total = match.score.overallScore.team2;
             const legTarget = match.setPointTarget * liveLeg.legNumber;
             const finalTarget = match.setPointTarget * match.numberOfSets;
 
+            // Check if the leg or match is finished FIRST
             if (team1Total >= legTarget || team2Total >= legTarget) {
-                liveLeg.status = 'Finished'; liveLeg.endScoreTeam1 = team1Total; liveLeg.endScoreTeam2 = team2Total;
+                liveLeg.status = 'Finished';
+                liveLeg.endScoreTeam1 = team1Total;
+                liveLeg.endScoreTeam2 = team2Total;
                 if (team1Total >= finalTarget || team2Total >= finalTarget) {
-                    match.status = 'Finished'; match.winner = team1Total > team2Total ? 1 : 2; match.endTime = new Date();
-                } else { match.status = 'AwaitingSubMatchSetup'; }
+                    match.status = 'Finished';
+                    match.winner = team1Total > team2Total ? 1 : 2;
+                    match.endTime = new Date();
+                } else {
+                    match.status = 'AwaitingSubMatchSetup';
+                }
+            } else {
+                //If the leg is NOT finished, THEN calculate the next server
+                if (match.teamMatchEncounterFormat === 'Dual') {
+                    const { nextServerId, nextReceiverId } = getNextDualServerAndReceiver(match);
+                    match.score.currentPlayerServer = nextServerId;
+                    match.score.currentPlayerReceiver = nextReceiverId;
+
+                    const team1PlayersIds = liveLeg.team1Players.map(p => p._id.toString());
+                    match.score.server = team1PlayersIds.includes(nextServerId) ? 1 : 2;
+                } else {
+                    const legStartPoints = liveLegIndex > 0 ? (match.score.relayLegs[liveLegIndex - 1].endScoreTeam1 + match.score.relayLegs[liveLegIndex - 1].endScoreTeam2) : 0;
+                    if ((team1Total + team2Total - legStartPoints) % 2 === 0) {
+                        match.score.server = match.score.server === 1 ? 2 : 1;
+                    }
+                }
             }
-            const legStartPoints = liveLegIndex > 0 ? (match.score.relayLegs[liveLegIndex - 1].endScoreTeam1 + match.score.relayLegs[liveLegIndex - 1].endScoreTeam2) : 0;
-            if ((team1Total + team2Total - legStartPoints) % 2 === 0) { match.score.server = match.score.server === 1 ? 2 : 1; }
         } else {
-            // --- LOGIC FOR IND/DUAL & TEAM SET MATCHES ---
+            // LOGIC FOR IND/DUAL & TEAM SET MATCHES 
             const { currentGame, server } = match.score;
             const setsToWin = match.setsToWin || Math.ceil(match.numberOfSets / 2);
             if (scoringTeam === 1) currentGame.team1++; else currentGame.team2++;
@@ -462,17 +460,13 @@ router.put('/:id/score', async (req, res) => {
             if (currentGame.team1 >= POINTS_TO_WIN_GAME && currentGame.team1 >= currentGame.team2 + 2) gameWinner = 1;
             else if (currentGame.team2 >= POINTS_TO_WIN_GAME && currentGame.team2 >= currentGame.team1 + 2) gameWinner = 2;
 
-            const isDualMatch = match.matchType === 'Dual' || (match.matchType === 'Team' && match.teamMatchEncounterFormat === 'Dual');
-
             if (gameWinner) {
                 const finalGameScore = [currentGame.team1, currentGame.team2];
-                if (gameWinner === 1) match.score.currentSetScore.team1++;
-                else match.score.currentSetScore.team2++;
+                if (gameWinner === 1) match.score.currentSetScore.team1++; else match.score.currentSetScore.team2++;
 
                 currentGame.team1 = 0;
                 currentGame.team2 = 0;
 
-                // Add score to history
                 if (match.matchType === 'Team') {
                     const liveSetIndex = match.score.setDetails.findIndex(s => s.status === 'Live');
                     if (liveSetIndex > -1) {
@@ -495,27 +489,21 @@ router.put('/:id/score', async (req, res) => {
                         match.winner = matchWinnerNum;
                     }
                 } else {
-                    if (isDualMatch) {
-                        match.status = 'AwaitingSubMatchSetup';
-                    } else { // Individual match - simple server switch
-                        match.score.server = gameWinner === 1 ? 2 : 1;
-                    }
+                    match.status = 'AwaitingSubMatchSetup';
                 }
-
             } else {
-                // --- GAME IS NOT FINISHED (POINT SCORED) ---
+                const isDualMatch = match.matchType === 'Dual' || (match.matchType === 'Team' && match.teamMatchEncounterFormat === 'Dual');
+
                 if (isDualMatch) {
                     const { nextServerId, nextReceiverId } = getNextDualServerAndReceiver(match);
                     match.score.currentPlayerServer = nextServerId;
                     match.score.currentPlayerReceiver = nextReceiverId;
 
                     const team1PlayersIds = (match.matchType === 'Team')
-                        ? match.score.setDetails.find(s => s.status === 'Live').team1Pair.map(p => p.toString())
+                        ? match.score.setDetails.find(s => s.status === 'Live').team1Pair.map(p => p._id.toString())
                         : [match.player1?._id.toString(), match.player2?._id.toString()];
                     match.score.server = team1PlayersIds.includes(nextServerId) ? 1 : 2;
-                } else {
-                    match.score.server = getNextServer(currentGame, server);
-                }
+                } else { match.score.server = getNextServer(currentGame, server); }
             }
         }
 
@@ -538,10 +526,6 @@ router.put('/:id/undo', async (req, res) => {
         if (!match.pointHistory || match.pointHistory.length === 0) { return res.status(400).json({ message: 'No points to undo.' }); }
 
         const lastPoint = match.pointHistory.pop();
-
-        // --- Restore the ENTIRE score object ---
-        // This is a simpler and more robust way to handle undo, 
-        // as it automatically reverts currentPlayerServer/Receiver.
         match.score = lastPoint.scoreStateBefore;
 
         if (match.status === 'Finished') {

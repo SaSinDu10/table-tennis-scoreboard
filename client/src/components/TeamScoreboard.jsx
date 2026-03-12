@@ -18,12 +18,20 @@ const getTeamName = (match, teamNumber) => {
     return teamData?.name || `Team ${teamNumber}`;
 };
 
-const renderCurrentPairAvatars = (players, isLive, serverId, receiverId, side = 'left') => {
+const renderCurrentPairAvatars = (players, isLive, serverId, receiverId, teamServer, side = 'left') => {
     const avatarSize = 80;
     const avatarContent = (p) => {
         if (!p) return null;
-        const isServing = isLive && p._id === serverId;
+
+        let isServing = false;
         const isReceiving = isLive && p._id === receiverId;
+
+        if (players.length > 1) {
+            isServing = isLive && p._id === serverId;
+        }
+        else {
+            isServing = isLive && ((side === 'left' && teamServer === 1) || (side === 'right' && teamServer === 2));
+        }
 
         const avatar = (
             <Avatar key={p._id} size={avatarSize} src={p.photoUrl ? `${API_URL}${p.photoUrl}` : undefined}>
@@ -43,12 +51,10 @@ const renderCurrentPairAvatars = (players, isLive, serverId, receiverId, side = 
     if (!players || players.length === 0) {
         return <Avatar size={avatarSize} icon={<UserOutlined />} />;
     }
-    if (players.length === 1) {
-        return avatarContent(players[0]);
-    }
+    if (players.length === 1) { return avatarContent(players[0]); }
 
     const containerWidth = avatarSize + 40;
-    const avatarComponent = (
+    return (
         <Space direction="vertical" size={4}>
             <div style={{ width: containerWidth, display: 'flex', justifyContent: side === 'left' ? 'flex-start' : 'flex-end' }}>
                 {avatarContent(players[0])}
@@ -58,8 +64,6 @@ const renderCurrentPairAvatars = (players, isLive, serverId, receiverId, side = 
             </div>
         </Space>
     );
-
-    return avatarComponent;
 };
 
 const TeamScoreboard = () => {
@@ -101,7 +105,6 @@ const TeamScoreboard = () => {
         return () => { isMounted = false; };
     }, [matchId, pairSelectionForm]);
 
-    // Memoized calculations for current set, available players etc.
     const {
         nextEncounterIndex,
         availableTeam1Players,
@@ -186,15 +189,33 @@ const TeamScoreboard = () => {
         setIsUpdatingScore(true);
         try {
             const response = await axios.put(`${API_URL}/api/matches/${matchId}/score`, { scoringTeam });
-            setMatchData(response.data);
-            if (response.data.status !== 'Live') {
-                message.info(`Set finished. Current overall score: ${response.data.score.currentSetScore.team1}-${response.data.score.currentSetScore.team2}`);
+            const newMatchData = response.data;
+            setMatchData(newMatchData);
+
+            if (newMatchData.status === 'AwaitingSubMatchSetup') {
+
+                if (newMatchData.teamMatchSubType === 'Relay') {
+                    const finishedLegs = newMatchData.score.relayLegs.filter(leg => leg.status === 'Finished');
+                    const lastFinishedLeg = finishedLegs[finishedLegs.length - 1];
+                    const legNumber = lastFinishedLeg ? lastFinishedLeg.legNumber : '';
+
+                    message.info(`Leg ${legNumber} finished. Current overall score: ${newMatchData.score.overallScore?.team1 ?? 0}-${newMatchData.score.overallScore?.team2 ?? 0}`);
+
+                }
+                else {
+                    const finishedSets = newMatchData.score.setDetails.filter(set => set.status === 'Finished');
+                    const lastFinishedSet = finishedSets[finishedSets.length - 1];
+                    const setNumber = lastFinishedSet ? lastFinishedSet.setIndex + 1 : '';
+
+                    message.info(`Set ${setNumber} finished. Current overall Sets Won: ${newMatchData.score.currentSetScore?.team1 ?? 0}-${newMatchData.score.currentSetScore?.team2 ?? 0}`);
+                }
             }
-            if (response.data.status === 'Finished') {
-                let finalWinnerName = 'N/A';
-                const winnerIdentifier = response.data.winner;
-                if (response.data.matchType === 'Individual') { finalWinnerName = winnerIdentifier === response.data.player1?._id ? getTeamName(response.data, 1) : getTeamName(response.data, 2); }
-                else { finalWinnerName = winnerIdentifier === 1 ? getTeamName(response.data, 1) : getTeamName(response.data, 2); }
+
+            if (newMatchData.status === 'Finished') {
+                const winnerIdentifier = newMatchData.winner;
+                const finalWinnerName = (winnerIdentifier === 1 || winnerIdentifier === 2)
+                    ? getTeamName(newMatchData, winnerIdentifier)
+                    : newMatchData.winner?.name || 'N/A';
                 message.success(`Match finished! Winner: ${finalWinnerName}`);
             }
         } catch (error) {
@@ -223,24 +244,23 @@ const TeamScoreboard = () => {
         }
     };
 
-    // --- Loading, Error, and No Data Render States ---
-    if (loading) { return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>; }
-    if (error) { return (<div style={{ padding: 20 }}> <Alert message="Error" description={error} type="error" showIcon /> <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginTop: 16 }}>Go Back</Button> </div>); }
-    if (!matchData) { return (<div style={{ padding: 20 }}> <Alert message="Match data not found." type="warning" showIcon /> <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginTop: 16 }}>Go Back</Button> </div>); }
-
-    const { status, teamMatchSubType, teamMatchEncounterFormat } = matchData;
-    const isAwaitingSetup = status === 'Upcoming' || status === 'AwaitingSubMatchSetup' || status === 'AwaitingTiebreakerPairs';
-    const isLive = status === 'Live';
-    const isFinished = status === 'Finished';
-    const canUndo = isLive && matchData?.pointHistory?.length > 0;
-    const isDualEncounter = teamMatchEncounterFormat === 'Dual';
+    const handleNextSetIndividual = (servingTeam) => {
+        handleSetupEncounter({
+            team1Players: selectedTeam1Players,
+            team2Players: selectedTeam2Players,
+            initialServer: servingTeam
+        });
+    };
 
     // --- UI for Player/Pair Selection (Unified for both Set and Relay) ---
     const renderEncounterSelectionForm = () => {
+
+        const isDualEncounter = matchData.teamMatchEncounterFormat === 'Dual';
+
         if (!matchData.team1 || !matchData.team2) {
             return <Spin tip="Loading team details..." />;
         }
-        
+
         const encounterLabel = teamMatchSubType === 'Relay' ? 'Leg' : 'Set';
         const nextEncounterNumber = nextEncounterIndex + 1;
         const formTitle = status === 'AwaitingTiebreakerPairs' ? 'Select Pairs for Tiebreaker' : `Select Players for ${encounterLabel} ${nextEncounterNumber}`;
@@ -253,9 +273,7 @@ const TeamScoreboard = () => {
             return `${player.name} (${remaining} ${label}${remaining !== 1 ? 's' : ''} left)`;
         };
         const getSelectedPlayers = (ids) => {
-            // If ids is falsy (null, undefined) or not an array, return an empty array.
             if (!ids || !Array.isArray(ids)) {
-                // For single-select mode, the value might not be an array, so we handle that.
                 if (ids && typeof ids === 'string') {
                     ids = [ids];
                 } else {
@@ -269,7 +287,6 @@ const TeamScoreboard = () => {
         const team1Pair = getSelectedPlayers(selectedTeam1Players);
         const team2Pair = getSelectedPlayers(selectedTeam2Players);
 
-        // The rest of this function is unchanged and correct
         return (
             <Card title={<Title level={4}>{formTitle}</Title>} style={{ marginTop: 20 }}>
                 {formError && <Alert message={`Error Starting ${encounterLabel}`} description={formError} type="error" showIcon closable onClose={() => setFormError(null)} style={{ marginBottom: 16 }} />}
@@ -288,7 +305,7 @@ const TeamScoreboard = () => {
                             </Form.Item>
                         </Col>
                     </Row>
-                    
+
                     {isDualEncounter && team1Pair.length === 2 && team2Pair.length === 2 && (
                         <>
                             <Form.Item name="initialServer" label="1. Select Serving Team" rules={[{ required: true }]}>
@@ -325,22 +342,40 @@ const TeamScoreboard = () => {
         );
     };
 
+    // --- Loading, Error, and No Data Render States ---
+    if (loading) { return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>; }
+    if (error) { return (<div style={{ padding: 20 }}> <Alert message="Error" description={error} type="error" showIcon /> <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginTop: 16 }}>Go Back</Button> </div>); }
+    if (!matchData) { return (<div style={{ padding: 20 }}> <Alert message="Match data not found." type="warning" showIcon /> <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginTop: 16 }}>Go Back</Button> </div>); }
+
+    const { status, teamMatchSubType, teamMatchEncounterFormat } = matchData;
+    const isAwaitingSetup = status === 'Upcoming' || status === 'AwaitingSubMatchSetup' || status === 'AwaitingTiebreakerPairs';
+    const isLive = status === 'Live';
+    const isFinished = status === 'Finished';
+    const canUndo = isLive && matchData?.pointHistory?.length > 0;
+
     // --- Main Scoreboard Display (Live scoring UI) ---
     // --- UI for Live Scoring (Router) ---
     const renderLiveScoreboard = () => {
-
         const currentPlayerServerId = matchData.score?.currentPlayerServer?._id;
         const currentPlayerReceiverId = matchData.score?.currentPlayerReceiver?._id;
+        const teamServer = matchData.score?.server;
 
-        // --- 'Set' Match Live UI ---
         if (teamMatchSubType === 'Set') {
             const currentLiveSetDetail = matchData.score?.setDetails?.find(s => s.status === 'Live');
-            if (!currentLiveSetDetail) return <Alert message="Waiting for next set setup..." type="info" showIcon />;
+
+            if (!currentLiveSetDetail && status === 'AwaitingSubMatchSetup') {
+                return renderEncounterSelectionForm();
+            }
+            if (!currentLiveSetDetail) {
+                return <Alert message="Waiting for match to start..." type="info" showIcon />;
+            }
+
             const currentSetNumberForDisplay = (matchData.score?.setDetails?.filter(s => s.status === 'Finished').length || 0) + 1;
             const team1PlayingPair = (currentLiveSetDetail.team1Pair || []).map(pIdObj => matchData.team1?.players.find(p => p._id === (pIdObj._id || pIdObj))).filter(Boolean);
             const team2PlayingPair = (currentLiveSetDetail.team2Pair || []).map(pIdObj => matchData.team2?.players.find(p => p._id === (pIdObj._id || pIdObj))).filter(Boolean);
             const team1PlayingNames = team1PlayingPair.map(p => p.name).join(' & ');
             const team2PlayingNames = team2PlayingPair.map(p => p.name).join(' & ');
+
             return (
                 <>
                     <Title level={5} style={{ textAlign: 'center' }}>Set {currentSetNumberForDisplay}: {team1PlayingNames} vs {team2PlayingNames}</Title>
@@ -354,13 +389,15 @@ const TeamScoreboard = () => {
                                         <Statistic title="Overall Sets Won" value={matchData.score?.currentSetScore?.team1 ?? 0} />
                                     </Space>
                                 </Card>
-                                {renderCurrentPairAvatars(team1PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, 'left')}
+                                {renderCurrentPairAvatars(team1PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, teamServer, 'left')}
                             </Space>
                         </Col>
-                        <Col xs={24} md={4}>vs</Col>
+                        <Col xs={24} sm={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Title level={2} type="secondary">vs</Title>
+                        </Col>
                         <Col xs={24} md={10}>
                             <Space align="center" size="middle">
-                                {renderCurrentPairAvatars(team2PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, 'right')}
+                                {renderCurrentPairAvatars(team2PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, teamServer, 'right')}
                                 <Card>
                                     <Space direction="vertical" align="center">
                                         <Title level={4} style={{ margin: 0 }}>{getTeamName(matchData, 2)}</Title>
@@ -408,43 +445,50 @@ const TeamScoreboard = () => {
         // --- 'Relay' Match Live UI ---
         if (matchData.teamMatchSubType === 'Relay') {
             const currentLeg = matchData.score?.relayLegs?.find(l => l.status === 'Live');
-            if (!currentLeg) return <Alert message="Waiting for next leg setup..." type="info" showIcon />;
+            if (!currentLeg) {
+                if (status === 'AwaitingSubMatchSetup') {
+                    return renderEncounterSelectionForm();
+                }
+                return <Alert message="Waiting for next leg setup..." type="info" showIcon />;
+            }
+
+            const currentLegNumber = currentLeg.legNumber;
+            const legTargetScore = (matchData.setPointTarget || 10) * currentLegNumber;
+            const finalTargetScore = (matchData.setPointTarget || 10) * (matchData.numberOfSets || 1);
+
             const team1PlayingPair = (currentLeg.team1Players || []).map(pId => matchData.team1?.players.find(p => p._id === (pId._id || pId))).filter(Boolean);
             const team2PlayingPair = (currentLeg.team2Players || []).map(pId => matchData.team2?.players.find(p => p._id === (pId._id || pId))).filter(Boolean);
 
             return (
                 <>
-                    <Title level={5} style={{ textAlign: 'center' }}>Leg {currentLegNumber}:{team1PlayingPair.map(p => p.name).join(' & ')} vs {team2PlayingPair.map(p => p.name).join(' & ')}</Title>
+                    <Title level={5} style={{ textAlign: 'center' }}>Leg {currentLegNumber}: {team1PlayingPair.map(p => p.name).join(' & ')} vs {team2PlayingPair.map(p => p.name).join(' & ')}</Title>
                     <Row justify="space-around" align="middle" gutter={[16, 24]} style={{ marginBottom: 24, textAlign: 'center' }}>
-
                         <Col xs={24} md={10}>
                             <Space align="center" size="middle">
-                                <Space direction="vertical" align="center">
-                                    <Card>
-                                        <Title level={4} style={{ margin: 0 }}>{getTeamName(matchData, 1)}</Title>
-                                        <Avatar shape='square' size={120} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
-                                    </Card>
-                                </Space>
-                                {renderCurrentPairAvatars(team1PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, 'left')}
-                            </Space>
-                        </Col>
-
-                        <Col xs={24} md={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Statistic title="Final Target" value={finalTargetScore} />
-                        </Col>
-
-                        <Col xs={24} md={10}>
-                            <Space align="center" size="middle">
-                                {renderCurrentPairAvatars(team2PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, 'right')}
                                 <Card>
                                     <Space direction="vertical" align="center">
-                                        <Title level={4} style={{ margin: 0 }}>{getTeamName(matchData, 2)}</Title>
+                                        <Title level={4}>{getTeamName(matchData, 1)}</Title>
+                                        <Avatar shape='square' size={120} src={matchData.team1?.logoUrl ? `${API_URL}${matchData.team1.logoUrl}` : undefined} icon={<UserOutlined />} />
+                                    </Space>
+                                </Card>
+                                {renderCurrentPairAvatars(team1PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, teamServer, 'left')}
+                            </Space>
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Statistic title="Final Target" value={finalTargetScore} />
+                        </Col>
+                        <Col xs={24} md={10}>
+                            <Space align="center" size="middle">
+                                {renderCurrentPairAvatars(team2PlayingPair, isLive, currentPlayerServerId, currentPlayerReceiverId, teamServer, 'right')}
+                                <Card>
+                                    <Space direction="vertical" align="center">
+                                        <Title level={4}>{getTeamName(matchData, 2)}</Title>
                                         <Avatar shape='square' size={120} src={matchData.team2?.logoUrl ? `${API_URL}${matchData.team2.logoUrl}` : undefined} icon={<UserOutlined />} />
                                     </Space>
                                 </Card>
                             </Space>
                         </Col>
-                    </Row >
+                    </Row>
 
                     <Divider>Overall Score (Leg Target: {legTargetScore})</Divider>
                     <Row justify="space-around" align="middle" gutter={16}>
@@ -452,9 +496,7 @@ const TeamScoreboard = () => {
                             <Statistic value={matchData.score.overallScore?.team1 ?? 0} valueStyle={{ fontSize: '4rem' }} />
                             {!isFinished && <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => handleScoreUpdate(1)} loading={isUpdatingScore || isUndoing} disabled={isUndoing || isFinished} block>Point</Button>}
                         </Col>
-                        <Col span={4} style={{ textAlign: 'center', fontSize: '3rem', color: '#aaa' }}>
-
-                        </Col>
+                        <Col span={4} />
                         <Col span={10} style={{ textAlign: 'center' }}>
                             <Statistic value={matchData.score.overallScore?.team2 ?? 0} valueStyle={{ fontSize: '4rem' }} />
                             {!isFinished && <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => handleScoreUpdate(2)} loading={isUpdatingScore || isUndoing} disabled={isUndoing || isFinished} block> Point</Button>}
@@ -473,11 +515,10 @@ const TeamScoreboard = () => {
 
         return (
             <>
-                <Col>
-                    <Button style={{ color: '#aa14f0' }} icon={<ArrowLeftOutlined />} onClick={() => navigate('/team-matches')}>
-                        Back to Team Matches
-                    </Button>
-                </Col>
+                <Button style={{ color: '#aa14f0' }} icon={<ArrowLeftOutlined />} onClick={() => navigate('/team-matches')}>
+                    Back to Team Matches
+                </Button>
+
                 <Result
                     icon={<TrophyOutlined style={{ color: '#52c41a' }} />}
                     title={<Title level={2} style={{ color: '#52c41a' }}>Congratulations, {winnerName}!</Title>}

@@ -34,27 +34,24 @@ const Scoreboard = () => {
     const selectedNextServingTeam = Form.useWatch('initialServerTeam', nextSetForm);
     const [isNextSetModalVisible, setIsNextSetModalVisible] = useState(false);
 
-    // --- Data Fetching ---
     useEffect(() => {
         if (!matchId) return;
         let isMounted = true;
         const fetchMatch = async () => {
-            setLoading(true);
-            setError(null);
+            setLoading(true); setError(null);
             try {
                 const response = await axios.get(`${API_URL}/api/matches/${matchId}`);
-                const match = response.data;
-                setMatchData(match);
+                if (isMounted) {
+                    const match = response.data;
+                    setMatchData(match);
 
-                // --- NEW: Automatically show the modal if needed ---
-                if (match.status === 'AwaitingSubMatchSetup' && match.matchType === 'Dual') {
-                    setIsNextSetModalVisible(true);
+                    if (match.status === 'AwaitingSubMatchSetup') {
+                        setIsNextSetModalVisible(true);
+                    }
                 }
             } catch (err) {
                 setError(err.response?.data?.message || "Failed to load match data.");
-            } finally {
-                setLoading(false);
-            }
+            } finally { if (isMounted) setLoading(false); }
         };
         fetchMatch();
         return () => { isMounted = false; };
@@ -94,11 +91,15 @@ const Scoreboard = () => {
     const handleNextSetSetup = async (values) => {
         setIsStartingMatch(true);
         try {
-            const payload = {
-                initialServerPlayerId: values.initialServerPlayerId,
-                initialReceiverPlayerId: values.initialReceiverPlayerId,
-            };
+            const payload = matchType === 'Individual'
+                ? { initialServer: values.initialServer }
+                : {
+                    initialServerPlayerId: values.initialServerPlayerId,
+                    initialReceiverPlayerId: values.initialReceiverPlayerId
+                };
+
             const response = await axios.put(`${API_URL}/api/matches/${matchId}/next-set-server`, payload);
+
             setMatchData(response.data);
             setIsNextSetModalVisible(false);
             nextSetForm.resetFields();
@@ -153,22 +154,24 @@ const Scoreboard = () => {
         console.log("Is winner === player1._id?", winner?.toString() === player1?._id?.toString());
         console.log("Is winner === player2._id?", winner?.toString() === player2?._id?.toString());
 
-        if (matchType === 'Individual') {
-            if (winner && winner._id) {
-                winnerName = winner.name;
-                winnerPlayers = [winner];
+        if (isFinished && winner) {
+            if (matchType === 'Individual') {
+                if (winner && winner._id) {
+                    winnerName = winner.name;
+                    winnerPlayers = [winner];
+                }
+            } else if (matchType === 'Dual') {
+                if (winner === 1) {
+                    winnerName = team1Name;
+                    winnerPlayers = [player1, player2].filter(Boolean);
+                } else {
+                    winnerName = team2Name;
+                    winnerPlayers = [player3, player4].filter(Boolean);
+                }
             }
-        } else if (matchType === 'Dual') {
-            if (winner === 1) {
-                winnerName = team1Name;
-                winnerPlayers = [player1, player2].filter(Boolean);
-            } else {
-                winnerName = team2Name;
-                winnerPlayers = [player3, player4].filter(Boolean);
-            }
+            console.log("Final determined winnerName:", winnerName);
+            console.log("------------------------");
         }
-        console.log("Final determined winnerName:", winnerName);
-        console.log("------------------------");
     }
 
     // --- Avatar Rendering Helper Function ---
@@ -177,7 +180,6 @@ const Scoreboard = () => {
         const avatarContent = (p) => {
             if (!p) return null;
 
-            // --- Logic to determine who is serving or receiving ---
             let isServing = false;
             let isReceiving = false;
 
@@ -186,7 +188,6 @@ const Scoreboard = () => {
                     isServing = p._id === currentPlayerServerId;
                     isReceiving = p._id === currentPlayerReceiverId;
                 } else { // Individual match
-                    // For individual, check the TEAM server (1 or 2) and which side we are rendering
                     isServing = (side === 'left' && score.server === 1) || (side === 'right' && score.server === 2);
                 }
             }
@@ -198,10 +199,24 @@ const Scoreboard = () => {
             );
 
             if (isServing) {
-                return <Tooltip title="Serving"><span style={{ border: '3px solid #1677ff', borderRadius: '50%', display: 'inline-block', padding: '3px', lineHeight: 0 }}>{avatar}</span></Tooltip>;
+                return <Tooltip title="Serving">
+                    <span style={{
+                        border: '3px solid #1677ff', borderRadius: '50%',
+                        display: 'inline-block', padding: '3px', lineHeight: 0
+                    }}>
+                        {avatar}
+                    </span>
+                </Tooltip>;
             }
             if (isReceiving) {
-                return <Tooltip title="Receiving"><span style={{ border: '3px solid #faad14', borderRadius: '50%', display: 'inline-block', padding: '3px', lineHeight: 0 }}>{avatar}</span></Tooltip>;
+                return <Tooltip title="Receiving">
+                    <span style={{
+                        border: '3px solid #faad14', borderRadius: '50%',
+                        display: 'inline-block', padding: '3px', lineHeight: 0
+                    }}>
+                        {avatar}
+                    </span>
+                </Tooltip>;
             }
             return avatar;
         };
@@ -209,7 +224,6 @@ const Scoreboard = () => {
         if (!players || players.length === 0) return <Avatar size={avatarSize} icon={<UserOutlined />} />;
         if (players.length === 1) return avatarContent(players[0]);
 
-        // The angled layout for dual matches is correct
         const containerWidth = avatarSize + 40;
         return (
             <Space direction="vertical" size={4}>
@@ -219,7 +233,6 @@ const Scoreboard = () => {
         );
     };
 
-    // --- This is the CORRECTED 'isUpcoming' block ---
     if (isUpcoming) {
         if (matchType === 'Individual') {
             return (
@@ -236,7 +249,7 @@ const Scoreboard = () => {
                 </Card>
             );
         }
-        // New UI for DUAL matches
+        // UI for DUAL matches
         return (
             <Card>
                 <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/setup-match')} style={{ marginBottom: 16 }}>Back to Matches</Button>
@@ -322,42 +335,60 @@ const Scoreboard = () => {
 
             <Modal
                 title={`Setup for Next Set (Set ${(score?.sets?.length || 0) + 1})`}
-                open={isAwaitingNextSet && matchType === 'Dual'}
+                open={isAwaitingNextSet}
                 closable={false}
                 footer={null}
             >
-                <Form form={nextSetForm} layout="vertical" onFinish={handleNextSetSetup}>
-                    <Form.Item name="initialServerTeam" label="1. Select Serving Team" rules={[{ required: true, message: 'Please select the team to serve.' }]}>
-                        <Radio.Group>
-                            <Radio value={1}>{team1Name}</Radio>
-                            <Radio value={2}>{team2Name}</Radio>
-                        </Radio.Group>
-                    </Form.Item>
+                {matchType === 'Dual' && (
+                    <Form form={nextSetForm} layout="vertical" onFinish={handleNextSetSetup}>
+                        <Form.Item name="initialServerTeam" label="1. Select Serving Team" rules={[{ required: true }]}>
+                            <Radio.Group>
+                                <Radio value={1}>{team1Name}</Radio>
+                                <Radio value={2}>{team2Name}</Radio>
+                            </Radio.Group>
+                        </Form.Item>
 
-                    {selectedNextServingTeam && (
-                        <>
-                            <Form.Item name="initialServerPlayerId" label="2. Select First Server" rules={[{ required: true }]}>
-                                <Select placeholder="Choose player to serve">
-                                    {(selectedNextServingTeam === 1 ? [player1, player2] : [player3, player4]).map(p => 
-                                        p ? <Option key={p._id} value={p._id}>{p.name}</Option> : null
-                                    )}
-                                </Select>
-                            </Form.Item>
-                            <Form.Item name="initialReceiverPlayerId" label="3. Select First Receiver" rules={[{ required: true }]}>
-                                <Select placeholder="Choose player to receive">
-                                    {(selectedNextServingTeam === 1 ? [player3, player4] : [player1, player2]).map(p => 
-                                        p ? <Option key={p._id} value={p._id}>{p.name}</Option> : null
-                                    )}
-                                </Select>
-                            </Form.Item>
-                            <Form.Item>
-                                <Button type="primary" htmlType="submit" loading={isStartingMatch} block>
-                                    Start Next Set
-                                </Button>
-                            </Form.Item>
-                        </>
-                    )}
-                </Form>
+                        {selectedNextServingTeam && (
+                            <>
+                                <Form.Item name="initialServerPlayerId" label="2. Select First Server" rules={[{ required: true }]}>
+                                    <Select placeholder="Choose player to serve">
+                                        {(selectedNextServingTeam === 1 ? [player1, player2] : [player3, player4]).filter(Boolean).map(p =>
+                                            <Option key={p._id} value={p._id}>{p.name}</Option>
+                                        )}
+                                    </Select>
+                                </Form.Item>
+                                <Form.Item name="initialReceiverPlayerId" label="3. Select First Receiver" rules={[{ required: true }]}>
+                                    <Select placeholder="Choose player to receive">
+                                        {(selectedNextServingTeam === 1 ? [player3, player4] : [player1, player2]).filter(Boolean).map(p =>
+                                            <Option key={p._id} value={p._id}>{p.name}</Option>
+                                        )}
+                                    </Select>
+                                </Form.Item>
+                                <Form.Item>
+                                    <Button type="primary" htmlType="submit" loading={isStartingMatch} block>
+                                        Start Next Set
+                                    </Button>
+                                </Form.Item>
+                            </>
+                        )}
+                    </Form>
+                )}
+
+                {matchType === 'Individual' && (
+                    <Form form={nextSetForm} layout="vertical" onFinish={handleNextSetSetup}>
+                        <Form.Item name="initialServer" label="Who will serve first in this set?" rules={[{ required: true }]}>
+                            <Radio.Group>
+                                <Radio value={1}>{team1Name}</Radio>
+                                <Radio value={2}>{team2Name}</Radio>
+                            </Radio.Group>
+                        </Form.Item>
+                        <Form.Item>
+                            <Button type="primary" htmlType="submit" loading={isStartingMatch} block>
+                                Start Next Set
+                            </Button>
+                        </Form.Item>
+                    </Form>
+                )}
             </Modal>
         </>
     );
