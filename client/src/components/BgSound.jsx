@@ -10,6 +10,11 @@ import snoopDog from "../assets/sounds/snoopDog.mp3";
 import visalaKaradare from "../assets/sounds/visalaKaradare.mp3";
 import tataaTrumpt from "../assets/sounds/tataaTrumpt.mp3";
 import asahane from "../assets/sounds/asahane.mp3";
+import kumara from "../assets/sounds/kumara.mp3";
+import clock from "../assets/sounds/clock.mp3";
+import fart from "../assets/sounds/fart.mp3";
+import trombone from "../assets/sounds/trombone.mp3";
+import wooaah from "../assets/sounds/wooaah.mp3";
 
 // --- Accept the 'isSoundEnabled' prop from App.jsx ---
 const BgSound = ({ isSoundEnabled }) => {
@@ -22,6 +27,11 @@ const BgSound = ({ isSoundEnabled }) => {
     const [playKaradare] = useSound(visalaKaradare, { volume: 0.8 });
     const [playTrumpt] = useSound(tataaTrumpt, { volume: 0.8 });
     const [playAsahane] = useSound(asahane, { volume: 0.8 });
+    const [playKumara] = useSound(kumara, { volume: 0.8 });
+    const [playClock] = useSound(clock, { volume: 1.2 });
+    const [playFart] = useSound(fart, { volume: 0.8 });
+    const [playTrombone] = useSound(trombone, { volume: 0.8 });
+    const [playWooaah] = useSound(wooaah, { volume: 0.8 });
 
     // This useEffect for unlocking audio remains the same.
     useEffect(() => {
@@ -44,13 +54,18 @@ const BgSound = ({ isSoundEnabled }) => {
 
             const key = e.key.toLowerCase();
 
-            if (key === "i") playIPL();
-            if (key === "e") playEmotion();
-            if (key === "p") playPuluwanda();
+            if (key === "a") playIPL();
+            if (key === "c") playClock();
             if (key === "d") playSnoop();
+            if (key === "e") playEmotion();
+            if (key === "f") playFart();
             if (key === "k") playKaradare();
+            if (key === "m") playAsahane();
+            if (key === "p") playPuluwanda();
+            if (key === "q") playKumara();
             if (key === "t") playTrumpt();
-            if (key === "a") playAsahane();
+            if (key === "v") playTrombone();
+            if (key === "w") playWooaah();
         };
 
         window.addEventListener("keydown", handleKeyDown);
@@ -66,6 +81,11 @@ const BgSound = ({ isSoundEnabled }) => {
         playKaradare, 
         playTrumpt, 
         playAsahane, 
+        playKumara,
+        playClock,
+        playFart,
+        playTrombone,
+        playWooaah,
         isSoundEnabled]);
 
     return null;

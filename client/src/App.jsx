@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Menu, Typography, Spin, Alert, Space, message, Switch } from 'antd';
+import { Layout, Menu, Typography, Spin, Alert, Space, message, Switch, ConfigProvider, theme } from 'antd';
 import axios from 'axios';
 import { Routes, Route, useNavigate, useLocation, useMatch } from 'react-router-dom';
 import PlayerForm from './components/PlayerForm';
@@ -20,15 +20,17 @@ import 'antd/dist/reset.css';
 
 import {
     UserOutlined, UnorderedListOutlined, TrophyOutlined,
-    TeamOutlined, UsergroupAddOutlined, SoundOutlined, CheckCircleOutlined
+    TeamOutlined, UsergroupAddOutlined, SoundOutlined, CheckCircleOutlined,
+    MoonOutlined, SunOutlined
 } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
+const { defaultAlgorithm, darkAlgorithm } = theme;
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-function App() {
+const MainLayout = ({ isDarkTheme, handleThemeChange }) => {
     const [players, setPlayers] = useState([]);
     const [loadingPlayers, setLoadingPlayers] = useState(true);
     const [errorPlayers, setErrorPlayers] = useState(null);
@@ -39,7 +41,8 @@ function App() {
     const [isSoundEnabled, setIsSoundEnabled] = useState(false);
     const [siderCollapsed, setSiderCollapsed] = useState(false);
 
-    // React Router hooks
+    const { token } = theme.useToken();
+
     const navigate = useNavigate();
     const location = useLocation();
     const onStandardScoreboard = useMatch("/match/:id/score");
@@ -120,7 +123,6 @@ function App() {
         setMatchListVersion(prevVersion => prevVersion + 1);
     };
 
-    // Determine selected menu key based on route
     const getSelectedKey = () => {
         const path = location.pathname;
         if (isScoreboardRoute) return null;
@@ -128,7 +130,7 @@ function App() {
         if (path === '/setup-match') return '3';
         if (path === '/team-matches') return '4';
         if (path === '/rankings') return '5';
-        if (path === '/finished-matches') return '6'; 
+        if (path === '/finished-matches') return '6';
         return '1';
     };
 
@@ -147,160 +149,163 @@ function App() {
     const handleTeamListUpdate = () => fetchTeams();
 
     return (
-        <>
-            <Layout style={{ minHeight: '100vh' }}>
-                {!isScoreboardRoute && (
-                    <Sider
-                        breakpoint="lg"
-                        collapsedWidth="0"
-                        onCollapse={(collapsed) => {
-                            setSiderCollapsed(collapsed);
+        <Layout style={{ minHeight: '100vh', background: token.colorBgLayout }}>
+            {!isScoreboardRoute && (
+                <Sider
+                    breakpoint="lg"
+                    collapsedWidth="0"
+                    onCollapse={(collapsed) => setSiderCollapsed(collapsed)}
+                    style={{ height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 10, overflow: 'auto' }}
+                >
+                    <div style={{ height: '32px', margin: '16px', background: 'rgba(255, 255, 255, 0.2)', color: 'white', lineHeight: '32px', borderRadius: '4px' }}> Menu </div>
+                    <Menu
+                        theme="dark" mode="inline"
+                        selectedKeys={getSelectedKey() ? [getSelectedKey()] : []}
+                        onClick={({ key }) => {
+                            if (key === '1') navigate('/');
+                            else if (key === '2') navigate('/teams');
+                            else if (key === '3') navigate('/setup-match');
+                            else if (key === '4') navigate('/team-matches');
+                            else if (key === '5') navigate('/rankings');
+                            else if (key === '6') navigate('/finished-matches');
                         }}
-                        style={{
-                            height: '100vh',
-                            position: 'fixed',
-                            left: 0,
-                            top: 0,
-                            bottom: 0,
-                            zIndex: 10,
-                            overflow: 'auto',
-                        }}
-                    >
-                        <div style={{ height: '32px', margin: '16px', background: 'rgba(255, 255, 255, 0.2)', textAlign: 'center', color: 'white', lineHeight: '32px', borderRadius: '4px' }}> Menu </div>
-                        <Menu
-                            theme="dark" mode="inline"
-                            selectedKeys={getSelectedKey() ? [getSelectedKey()] : []}
-                            onClick={({ key }) => {
-                                if (key === '1') navigate('/');
-                                else if (key === '2') navigate('/teams');
-                                else if (key === '3') navigate('/setup-match');
-                                else if (key === '4') navigate('/team-matches');
-                                else if (key === '5') navigate('/rankings');
-                                else if (key === '6') navigate('/finished-matches');
-                            }}
-                            items={menuItems}
-                        />
-                        <div style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            width: '100%',
-                            padding: '16px',
-                            color: 'rgba(255, 255, 255, 0.65)',
-                            borderTop: '1px solid #333'
-                        }}>
-                            <Space align="center">
-                                <SoundOutlined />
-                                <span style={{ flex: 1, marginRight: '8px' }}>Sound FX</span>
+                        items={menuItems}
+                    />
+                    <div style={{ position: 'absolute', bottom: 0, width: '100%', padding: '16px', color: 'rgba(255, 255, 255, 0.85)', borderTop: '1px solid #303030' }}>
+                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                            <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+                                <Space><SoundOutlined /><span>Sound FX</span></Space>
+                                <Switch checked={isSoundEnabled} onChange={(checked) => setIsSoundEnabled(checked)} size="small" />
+                            </Space>
+                            <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+                                <Space>
+                                    {isDarkTheme ? <MoonOutlined /> : <SunOutlined />}
+
+                                    <span>{isDarkTheme ? 'Dark Mode' : 'Light Mode'}</span>
+                                </Space>
                                 <Switch
-                                    checked={isSoundEnabled}
-                                    onChange={(checked) => setIsSoundEnabled(checked)}
+                                    checked={isDarkTheme}
+                                    onChange={handleThemeChange}
                                     size="small"
                                 />
                             </Space>
-                        </div>
-                    </Sider>
-                )}
+                        </Space>
+                    </div>
+                </Sider>
+            )}
 
-                {/* Inner Layout */}
-                <Layout style={{
-                    marginLeft: siderCollapsed || isScoreboardRoute ? 0 : 200,
-                    transition: 'margin-left 0.2s',
-                }}>
-                    <Header style={{ background: '#fff', paddingLeft: '20px', borderBottom: '1px solid #f0f0f0' }}>
-                        <Title level={3} style={{ margin: '16px 0', lineHeight: '32px' }}> Table Tennis Tournament Scoreboard </Title>
-                    </Header>
+            <Layout style={{ marginLeft: siderCollapsed || isScoreboardRoute ? 0 : 200, transition: 'margin-left 0.2s' }}>
+                <Header style={{ background: token.colorBgContainer, padding: '0 24px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
 
-                    {/* Main Content Area */}
-                    <Content style={{ margin: '24px 16px 0', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{
-                            padding: isScoreboardRoute ? '0 16px' : 24,
-                            background: '#fff',
-                            flex: '1 0 auto'
-                        }}>
-                            <div style={{
-                                padding: isScoreboardRoute ? 0 : 24,
-                                background: isScoreboardRoute ? 'transparent' : '#fff',
-                                flex: 1
-                            }}></div>
-                            <Routes>
-                                <Route
-                                    path="/"
-                                    element={
-                                        <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                            <PlayerForm onPlayerAdded={handleListUpdate} />
-                                            <PlayerList
-                                                players={players}
-                                                loading={loadingPlayers}
-                                                error={errorPlayers}
-                                                title="All Players"
-                                                onListUpdate={handleListUpdate}
-                                            />
-                                        </Space>
-                                    }
-                                />
-                                {/* --- Teams Management Route --- */}
-                                <Route
-                                    path="/teams"
-                                    element={
-                                        <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                            <TeamForm onTeamCreated={handleTeamCreated} />
-                                            <TeamList
-                                                teams={teams}
-                                                loading={loadingTeams}
-                                                error={errorTeams}
-                                                title="Registered Teams"
-                                                onListUpdate={handleTeamListUpdate}
-                                            />
-                                        </Space>
-                                    }
-                                />
-                                {/* Match Setup & Lists Route */}
-                                <Route
-                                    path="/setup-match"
-                                    element={
-                                        <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                            <MatchSetupForm onMatchCreated={handleMatchCreated} />
-                                            <MatchList key={`upcoming-${matchListVersion}`} status="Upcoming" title="Upcoming Matches" />
-                                            <MatchList key={`live-${matchListVersion}`} status="Live" title="Live Matches" />
-                                        </Space>
-                                    }
-                                />
-                                <Route
-                                    path="/team-matches"
-                                    element={<TeamMatchesLanding />}
-                                />
-                                <Route
-                                    path="/team-matches/setup-set"
-                                    element={
-                                        <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
-                                            <TeamSetMatchSetup onTeamMatchCreated={handleTeamMatchCreated} />
-                                            <MatchList key={`upcoming-teamset-${matchListVersion}`} status="Upcoming" title="Upcoming Team Set Matches" matchTypeFilter="TeamSet" />
-                                        </Space>
-                                    }
-                                />
-                                <Route
-                                    path="/team-matches/setup-relay"
-                                    element={<TeamRelayMatchSetup onTeamMatchCreated={handleMatchCreated} />} // Use the imported component
-                                />
-                                {/* Scoreboard Route */}
-                                <Route path="/match/:id/score" element={<Scoreboard />} />
-                                {/* Team Scoreboard Route */}
-                                <Route path="/team-match/:id/score" element={<TeamScoreboard />} />
-                                {/* Player Rankings Route */}
-                                <Route path="/rankings" element={<PlayerRankings />} />
-                                {/* Finished Matches Route */}
-                                <Route path="/finished-matches" element={<FinishedMatchesPage />} />
-                            </Routes>
-                        </div>
-                    </Content>
-
-                    <Footer style={{ textAlign: 'center', background: '#f0f2f5', padding: '15px 50px' }}>
-                        Scoreboard App ©{new Date().getFullYear()}
-                    </Footer>
-                </Layout>
+                    <Title level={3} style={{ margin: '16px 0', lineHeight: '32px', color: token.colorText, align: 'center'}}>
+                        Table Tennis Tournament Scoreboard
+                    </Title>
+                </Header>
+                <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
+                    <div style={{ padding: isScoreboardRoute ? 0 : 24, background: token.colorBgContainer, minHeight: `calc(100vh - ${isScoreboardRoute ? '134px' : '158px'})` }}>
+                        <Routes>
+                            <Route
+                                path="/"
+                                element={
+                                    <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
+                                        <PlayerForm onPlayerAdded={handleListUpdate} />
+                                        <PlayerList
+                                            players={players}
+                                            loading={loadingPlayers}
+                                            error={errorPlayers}
+                                            title="All Players"
+                                            onListUpdate={handleListUpdate}
+                                        />
+                                    </Space>
+                                }
+                            />
+                            {/* --- Teams Management Route --- */}
+                            <Route
+                                path="/teams"
+                                element={
+                                    <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
+                                        <TeamForm onTeamCreated={handleTeamCreated} />
+                                        <TeamList
+                                            teams={teams}
+                                            loading={loadingTeams}
+                                            error={errorTeams}
+                                            title="Registered Teams"
+                                            onListUpdate={handleTeamListUpdate}
+                                        />
+                                    </Space>
+                                }
+                            />
+                            {/* Match Setup & Lists Route */}
+                            <Route
+                                path="/setup-match"
+                                element={
+                                    <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
+                                        <MatchSetupForm onMatchCreated={handleMatchCreated} />
+                                        <MatchList key={`upcoming-${matchListVersion}`} status="Upcoming" title="Upcoming Matches" />
+                                        <MatchList key={`live-${matchListVersion}`} status="Live" title="Live Matches" />
+                                    </Space>
+                                }
+                            />
+                            <Route
+                                path="/team-matches"
+                                element={<TeamMatchesLanding />}
+                            />
+                            <Route
+                                path="/team-matches/setup-set"
+                                element={
+                                    <Space direction="vertical" size="large" style={{ display: 'flex', width: '100%' }}>
+                                        <TeamSetMatchSetup onTeamMatchCreated={handleTeamMatchCreated} />
+                                        <MatchList key={`upcoming-teamset-${matchListVersion}`} status="Upcoming" title="Upcoming Team Set Matches" matchTypeFilter="TeamSet" />
+                                    </Space>
+                                }
+                            />
+                            <Route
+                                path="/team-matches/setup-relay"
+                                element={<TeamRelayMatchSetup onTeamMatchCreated={handleMatchCreated} />} // Use the imported component
+                            />
+                            {/* Scoreboard Route */}
+                            <Route path="/match/:id/score" element={<Scoreboard />} />
+                            {/* Team Scoreboard Route */}
+                            <Route path="/team-match/:id/score" element={<TeamScoreboard />} />
+                            {/* Player Rankings Route */}
+                            <Route path="/rankings" element={<PlayerRankings />} />
+                            {/* Finished Matches Route */}
+                            <Route path="/finished-matches" element={<FinishedMatchesPage />} />
+                        </Routes>
+                    </div>
+                </Content>
+                <Footer style={{ textAlign: 'center', background: 'transparent' }}>
+                    Scoreboard App ©2026
+                </Footer>
             </Layout>
             <BgSound isSoundEnabled={isSoundEnabled} />
-        </>
+        </Layout>
+    );
+};
+
+// --- The main App component is now a simple wrapper ---
+function App() {
+    const [currentTheme, setCurrentTheme] = useState(() => {
+        const savedTheme = localStorage.getItem('scoreboardTheme');
+        return savedTheme || 'light';
+    });
+
+    const isDarkTheme = currentTheme === 'dark';
+
+    const handleThemeChange = (checked) => {
+        const newTheme = checked ? 'dark' : 'light';
+        setCurrentTheme(newTheme);
+        localStorage.setItem('scoreboardTheme', newTheme);
+    };
+
+    useEffect(() => {
+        localStorage.setItem('scoreboardTheme', currentTheme);
+    }, [currentTheme]);
+
+    return (
+        <ConfigProvider theme={{ algorithm: isDarkTheme ? darkAlgorithm : defaultAlgorithm }}>
+            <MainLayout isDarkTheme={isDarkTheme} handleThemeChange={handleThemeChange} />
+        </ConfigProvider>
     );
 }
 

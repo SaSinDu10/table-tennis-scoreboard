@@ -1,6 +1,6 @@
 // src/components/PlayerRankings.jsx
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Spin, Alert, Typography, Avatar, Space } from 'antd';
+import { Table, Card, Spin, Alert, Typography, Avatar, Space, theme } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -11,6 +11,8 @@ const PlayerRankings = () => {
     const [rankings, setRankings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    const { token } = theme.useToken();
 
     useEffect(() => {
         const fetchRankings = async () => {
@@ -81,15 +83,9 @@ const PlayerRankings = () => {
     // --- FUNCTION FOR CONDITIONAL ROW STYLING ---
     const getRowClassName = (record, index) => {
         const rank = index + 1;
-        const totalPlayers = rankings.length;
-
-        if (rank <= 5) {
-            return 'rank-top-5'; // Green
-        }
-        if (rank > totalPlayers - 5) {
-            return 'rank-bottom-5'; // Red
-        }
-        return 'rank-middle'; // Yellow
+        if (rank <= 5) return 'rank-top-5';
+        if (rank > rankings.length - 5 && rankings.length > 10) return 'rank-bottom-5';
+        return 'rank-middle';
     };
 
     if (error) {
@@ -98,22 +94,30 @@ const PlayerRankings = () => {
 
     return (
         <>
-        <style>{`
-                .rank-top-5 {
-                    background-color: #cdf7e3 !important; /* Light green */
+            <style>{`
+                .rank-top-5 td {
+                    background-color: ${token.colorSuccessBgHover} !important;
                 }
-                .rank-bottom-5 {
-                    background-color: #f8bbc0 !important; /* Light red */
+                .rank-middle td {
+                    background-color: ${token.colorWarningBgHover} !important;
                 }
-                .rank-middle {
-                    background-color: #f3f8cd !important; /* Light yellow */
-                }
-                /* Optional: Add hover effect */
-                .ant-table-tbody > tr:hover > td {
-                    background-color: #e6f4ff !important;
+                .rank-bottom-5 td {
+                    background-color: ${token.colorErrorBgHover} !important;
                 }
             `}</style>
-            <Card title={<Title level={1}>Player Rankings</Title>} style={{ textAlign: 'center'}}>
+
+            <Card
+                variant={false}
+                Style={{ padding: 0 }}
+            >
+                <Title level={2} style={{
+                    textAlign: 'center',
+                    marginBottom: '24px',
+                    color: token.colorText
+                }}>
+                    Player Rankings
+                </Title>
+
                 <Spin spinning={loading}>
                     <Table
                         columns={columns}
@@ -126,7 +130,8 @@ const PlayerRankings = () => {
                 </Spin>
             </Card>
         </>
-        );
+    );
 };
+
 
 export default PlayerRankings;
